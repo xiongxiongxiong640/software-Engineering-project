@@ -1,11 +1,11 @@
-目前结构：数据已经下载到data文件夹下。
+目前结构：
 		大家想写可以开始写，写完分别推送到B/C/D分支下就OK。
 		（我后续会在A分支下面写，最后都写完后再合并到main分支）
 		.gitkeep文件只是占位的，大家可以直接删除。
 		有需要的环境配置/库请写在requirements.txt文件里。
 
 对于B：
-	代码放在apps/data_processor下
+	代码放在apps/data_processor下，原始数据下载后放在data文件夹下。
 	希望：
 		提供 load_data(filepath)：返回 adata 对象。filepath其实就是data文件夹下	面的数据
 		提供 get_cell_info(adata, cell_ids)：输入细胞 ID 列表，返回这些细胞的 		cell_type, disease, AgeGroup 以及 X_pca 坐标（用于前端画图）
