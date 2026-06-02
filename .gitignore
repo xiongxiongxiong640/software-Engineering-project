@@ -43,7 +43,6 @@ cover/
 *.h5ad
 *.h5
 *.hdf5
-data/
 
 # Uploads & exports
 uploads/
