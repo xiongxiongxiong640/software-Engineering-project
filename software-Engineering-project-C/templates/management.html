@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+{% block title %}系统管理 — 单细胞 ANN 检索系统{% endblock %}
+
+{% block head %}
+<style>
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 18px; margin: 0 0 16px 0; color: #1a1a2e; border-bottom: 2px solid #0f3460; padding-bottom: 8px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px; color: #333; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,.1); }
+
+    .btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+    .btn-primary { background: #0f3460; color: #fff; }
+    .btn-primary:hover { background: #1a4a8a; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { background: #e8e8e8; color: #333; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-danger { background: #c62828; color: #fff; }
+
+    .dataset-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; transition: border-color .2s; }
+    .dataset-item:hover { border-color: #0f3460; }
+    .dataset-item .name { font-weight: 600; }
+    .dataset-item .size { font-size: 12px; color: #999; }
+    .dataset-item.active { border-color: #0f3460; background: #f0f4ff; }
+    .dataset-item.active::after { content: '✓ 已加载'; font-size: 12px; color: #2e7d32; font-weight: 600; }
+
+    .status-msg { padding: 10px 16px; border-radius: 6px; margin: 12px 0; font-size: 13px; }
+    .status-msg.success { background: #e8f5e9; color: #2e7d32; }
+    .status-msg.error { background: #ffebee; color: #c62828; }
+    .status-msg.info { background: #e3f2fd; color: #0f3460; }
+
+    .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .config-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .config-item .key { color: #666; }
+    .config-item .val { font-weight: 600; color: #0f3460; }
+
+    .tab-bar { display: flex; gap: 0; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; background: #f0f0f0; border: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: all .2s; }
+    .tab:first-child { border-radius: 6px 0 0 6px; }
+    .tab:last-child { border-radius: 0 6px 6px 0; }
+    .tab.active { background: #0f3460; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:22px;color:#1a1a2e;margin-bottom:20px">系统管理</h1>
+
+<div class="tab-bar">
+    <button class="tab active" onclick="switchTab('upload')">上传文件</button>
+    <button class="tab" onclick="switchTab('local')">本地导入</button>
+    <button class="tab" onclick="switchTab('data')">数据管理</button>
+    <button class="tab" onclick="switchTab('index')">索引管理</button>
+    <button class="tab" onclick="switchTab('config')">检索配置</button>
+</div>
+
+<!-- Tab 0: 上传文件 -->
+<div id="tab-upload" style="display:block">
+    <div class="card">
+        <h2>上传单细胞表达矩阵</h2>
+        <p style="font-size:13px;color:#999;margin-bottom:8px">
+            支持 AnnData 格式（.h5ad）和 CSV/TSV 表达矩阵。.h5ad 文件自动提取 PCA 向量和细胞元信息。
+        </p>
+        <div style="border:2px dashed #ddd;border-radius:10px;padding:30px;text-align:center;margin-bottom:16px;background:#fafbfc;cursor:pointer"
+             onclick="document.getElementById('fileInput').click()" id="dropZone">
+            <div style="font-size:36px;margin-bottom:8px">📂</div>
+            <div id="dropText">点击选择文件或拖拽到此处</div>
+            <div style="font-size:12px;color:#999;margin-top:4px">支持 .h5ad / .csv / .tsv / .xlsx</div>
+            <input type="file" id="fileInput" accept=".h5ad,.csv,.tsv,.txt,.xlsx,.xls"
+                   style="display:none" onchange="fileSelected(this)">
+        </div>
+        <div id="fileInfo" style="display:none;margin-bottom:12px;font-size:13px;color:#0f3460;font-weight:600"></div>
+
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0">
+                <label for="uploadDsName">数据集名称</label>
+                <input type="text" id="uploadDsName" placeholder="如：PBMC_3k" style="width:100%">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+                    <input type="checkbox" id="uploadNorm" checked> CPM归一化
+                </label>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+                    <input type="checkbox" id="uploadLog" checked> log1p变换
+                </label>
+            </div>
+            <button class="btn btn-primary" onclick="doUpload()" id="uploadBtn" style="width:auto">🚀 上传并导入</button>
+        </div>
+        <div id="uploadMsg" style="margin-top:12px"></div>
+    </div>
+</div>
+
+<!-- Tab 1: 数据管理 -->
+<div id="tab-data" style="display:none">
+    <div class="card">
+        <h2>可用数据集</h2>
+        <div id="datasetList" style="margin-bottom:16px;">加载中...</div>
+        <button class="btn btn-primary" onclick="loadSelectedDataset()">加载选中数据集并构建索引</button>
+        <div id="dataStatusMsg"></div>
+    </div>
+</div>
+
+<!-- Tab 2: 本地导入 -->
+<div id="tab-local" style="display:none">
+    <div class="card">
+        <h2>data/ 目录本地文件</h2>
+        <p style="font-size:13px;color:#999;margin-bottom:16px">
+            将 .h5ad 或 CSV/TSV 格式的单细胞数据文件放入 <code>data/</code> 文件夹后在此处一键导入。
+            .h5ad 文件自动提取 PCA 和细胞类型信息。
+        </p>
+        <div id="localFileList" style="margin-bottom:16px;">加载中...</div>
+    </div>
+</div>
+
+<!-- Tab 2: 索引管理 -->
+<div id="tab-index" style="display:none">
+    <div class="card">
+        <h2>索引状态</h2>
+        <div id="indexStatus"><div class="status-msg info">索引尚未构建或加载</div></div>
+    </div>
+    <div class="card">
+        <h2>保存 / 加载索引</h2>
+        <div class="form-group">
+            <label for="indexPath">索引文件路径</label>
+            <input type="text" id="indexPath" value="data/index/liver" placeholder="data/index/liver">
+        </div>
+        <button class="btn btn-primary" onclick="saveIndex()">保存索引</button>
+        <button class="btn btn-secondary" onclick="loadIndex()" style="margin-left:8px;">加载索引</button>
+        <div id="indexMsg"></div>
+    </div>
+</div>
+
+<!-- Tab 3: 检索配置 -->
+<div id="tab-config" style="display:none">
+    <div class="card">
+        <h2>当前配置</h2>
+        <div id="configDisplay" style="color:#999;">加载中...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedDataset = null;
+
+    function switchTab(name) {
+        ['upload','data','local','index','config'].forEach(t => {
+            document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+        });
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        if (name === 'index') refreshIndexStatus();
+        if (name === 'config') refreshConfig();
+        if (name === 'local') loadLocalFiles();
+        if (name === 'data') loadDatasets();
+    }
+
+    // ===== 数据管理 =====
+    async function loadDatasets() {
+        try {
+            const resp = await fetch('/api/datasets');
+            const data = await resp.json();
+            const list = document.getElementById('datasetList');
+            if (!data.datasets || data.datasets.length === 0) {
+                list.innerHTML = '<div style="color:#999;padding:40px;text-align:center">' +
+                    'data/ 目录下没有找到 .h5ad 文件<br>' +
+                    '<small>请将数据集放入 data/ 文件夹后刷新页面</small></div>';
+                return;
+            }
+            list.innerHTML = data.datasets.map(d => `
+                <div class="dataset-item" data-path="${d.path}" onclick="selectDataset(this, '${d.path}')">
+                    <span class="name">${d.filename}</span>
+                    <span class="size">${d.size_mb} MB</span>
+                </div>
+            `).join('');
+
+            // 检查是否已有加载的数据
+            try {
+                const s = await fetch('/api/status');
+                const sd = await s.json();
+                if (sd.data_loaded) {
+                    // 高亮已加载的
+                    document.querySelectorAll('.dataset-item').forEach(el => {
+                        el.classList.add('active');
+                    });
+                }
+            } catch(e) {}
+        } catch(e) {
+            document.getElementById('datasetList').innerHTML =
+                '<div style="color:#c62828;">获取数据集列表失败: ' + e.message + '</div>';
+        }
+    }
+
+    function selectDataset(el, path) {
+        document.querySelectorAll('.dataset-item').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedDataset = path;
+    }
+
+    async function loadSelectedDataset() {
+        if (!selectedDataset) {
+            alert('请先选择一个数据集');
+            return;
+        }
+        const msg = document.getElementById('dataStatusMsg');
+        msg.innerHTML = '<div class="status-msg info">正在加载数据集并构建索引...</div>';
+        try {
+            const resp = await fetch('/api/load', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({data_file: selectedDataset})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const summary = data.data_summary;
+                msg.innerHTML = `<div class="status-msg success">
+                    数据集加载成功！<br>
+                    细胞数: ${summary.n_cells.toLocaleString()} | 
+                    基因数: ${summary.n_genes.toLocaleString()} | 
+                    PCA 维度: ${summary.n_pca_features}
+                </div>`;
+                document.querySelectorAll('.dataset-item').forEach(e => e.classList.add('active'));
+                checkStatus(); // 刷新导航栏状态
+            } else {
+                msg.innerHTML = `<div class="status-msg error">加载失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    // ===== 索引管理 =====
+    async function refreshIndexStatus() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            const container = document.getElementById('indexStatus');
+            if (data.index_ready && data.index_status) {
+                const s = data.index_status;
+                container.innerHTML = `<div class="status-msg success">
+                    索引就绪 | 类型: ${s.backend}/${s.faiss_index_type||s.hnsw_space||''} |
+                    条目: ${s.ntotal?.toLocaleString()} | 维度: ${s.dimension}
+                </div>`;
+            } else {
+                container.innerHTML = '<div class="status-msg info">索引尚未构建或加载</div>';
+            }
+        } catch(e) {
+            document.getElementById('indexStatus').innerHTML =
+                `<div class="status-msg error">无法获取索引状态</div>`;
+        }
+    }
+
+    async function saveIndex() {
+        const path = document.getElementById('indexPath').value.trim();
+        const msg = document.getElementById('indexMsg');
+        msg.innerHTML = '<div class="status-msg info">保存中...</div>';
+        try {
+            const resp = await fetch('/api/index/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({filepath: path})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                msg.innerHTML = `<div class="status-msg success">索引已保存到: ${data.path}</div>`;
+            } else {
+                msg.innerHTML = `<div class="status-msg error">保存失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    async function loadIndex() {
+        const path = document.getElementById('indexPath').value.trim();
+        const msg = document.getElementById('indexMsg');
+        msg.innerHTML = '<div class="status-msg info">加载中...</div>';
+        try {
+            const resp = await fetch('/api/index/load', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({filepath: path})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                msg.innerHTML = `<div class="status-msg success">索引加载成功！条目: ${data.index_status.ntotal?.toLocaleString()}</div>`;
+                refreshIndexStatus();
+            } else {
+                msg.innerHTML = `<div class="status-msg error">加载失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    // ===== 配置 =====
+    async function refreshConfig() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            const container = document.getElementById('configDisplay');
+            if (data.index_status) {
+                const s = data.index_status;
+                container.innerHTML = `
+                    <div class="config-item"><span class="key">后端</span><span class="val">${s.backend || '-'}</span></div>
+                    <div class="config-item"><span class="key">距离度量</span><span class="val">${s.distance_metric || '-'}</span></div>
+                    <div class="config-item"><span class="key">索引类型</span><span class="val">${s.faiss_index_type || s.hnsw_space || '-'}</span></div>
+                    <div class="config-item"><span class="key">索引条目数</span><span class="val">${s.ntotal?.toLocaleString() || '-'}</span></div>
+                    <div class="config-item"><span class="key">向量维度</span><span class="val">${s.dimension || '-'}</span></div>
+                `;
+            }
+        } catch(e) {}
+    }
+
+    loadDatasets();
+
+    // ===== 本地导入 =====
+    async function loadLocalFiles() {
+        const container = document.getElementById('localFileList');
+        container.innerHTML = '<div style="color:#999;padding:20px;text-align:center">扫描中...</div>';
+        try {
+            const resp = await fetch('/api/local-files');
+            const data = await resp.json();
+            if (!data.files || data.files.length === 0) {
+                container.innerHTML = '<div style="color:#999;padding:40px;text-align:center">' +
+                    'data/ 目录下没有可导入的 CSV/TSV 文件<br>' +
+                    '<small>请将数据文件放入 data/ 文件夹后刷新</small></div>';
+                return;
+            }
+            container.innerHTML = data.files.map(f => {
+                const labelBadge = f.has_labels ? ' 🏷 有标签' : '';
+                const typeBadge = f.is_h5ad ? ' 🧬 h5ad' : '';
+                const defaultName = f.filename.replace(/\.(h5ad|csv|tsv|txt)$/i, '');
+                return `
+                <div class="dataset-item" style="flex-direction:column;align-items:stretch">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span class="name">📄 ${f.filename}${typeBadge}${labelBadge}</span>
+                        <span class="size">${f.size_mb} MB | ${f.ext.toUpperCase()}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                        <input type="text" id="localName_${f.filename.replace(/[^a-zA-Z0-9]/g,'_')}"
+                               value="${defaultName}" placeholder="数据集名称"
+                               style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px">
+                        <button class="btn btn-sm btn-primary"
+                                onclick="importLocalFile('${f.path}', document.getElementById('localName_${f.filename.replace(/[^a-zA-Z0-9]/g,'_')}').value)">
+                            📥 导入
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            container.innerHTML = '<div style="color:#c62828">获取本地文件失败: ' + e.message + '</div>';
+        }
+    }
+
+    async function importLocalFile(filepath, dsName) {
+        if (!dsName) { alert('请输入数据集名称'); return; }
+        try {
+            const resp = await fetch('/api/local-files/import', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    filepath: filepath,
+                    dataset_name: dsName,
+                    username: sessionStorage.getItem('ann_user')
+                        ? JSON.parse(sessionStorage.getItem('ann_user')).username
+                        : 'admin'
+                })
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                alert(`导入成功！\nKey: ${data.key}\n细胞数: ${data.stats.n_cells}\n特征数: ${data.stats.n_genes}`);
+                // 刷新数据集列表
+                loadDatasets();
+                loadLocalFiles();
+            } else {
+                alert('导入失败: ' + data.message);
+            }
+        } catch(e) {
+            alert('请求失败: ' + e.message);
+        }
+    }
+
+    // ===== 文件上传 =====
+    let selectedFile = null;
+
+    function fileSelected(input) {
+        if (input.files.length > 0) {
+            selectedFile = input.files[0];
+            const mb = (selectedFile.size / (1024*1024)).toFixed(2);
+            document.getElementById('fileInfo').textContent = '已选择: ' + selectedFile.name + ' (' + mb + ' MB)';
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('dropText').textContent = '点击更换文件';
+            if (!document.getElementById('uploadDsName').value) {
+                document.getElementById('uploadDsName').value =
+                    selectedFile.name.replace(/\.(csv|tsv|txt|xlsx|xls)$/i, '');
+            }
+        }
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#0f3460'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#ddd'; });
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault(); dropZone.style.borderColor = '#ddd';
+        if (e.dataTransfer.files.length > 0) {
+            document.getElementById('fileInput').files = e.dataTransfer.files;
+            fileSelected(document.getElementById('fileInput'));
+        }
+    });
+
+    async function doUpload() {
+        if (!selectedFile) { alert('请先选择文件'); return; }
+        const dsName = document.getElementById('uploadDsName').value.trim();
+        if (!dsName) { alert('请输入数据集名称'); return; }
+        const msg = document.getElementById('uploadMsg');
+        const btn = document.getElementById('uploadBtn');
+        btn.disabled = true; btn.textContent = '上传中...';
+        msg.innerHTML = '<div class="status-msg info">正在上传并处理...</div>';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('dataset_name', dsName);
+            const u = sessionStorage.getItem('ann_user');
+            formData.append('username', u ? JSON.parse(u).username : 'admin');
+            formData.append('normalize', document.getElementById('uploadNorm').checked);
+            formData.append('log_transform', document.getElementById('uploadLog').checked);
+
+            const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const s = data.stats;
+                msg.innerHTML = '<div class="status-msg success">' +
+                    '上传成功！Key: ' + data.key + '<br>' +
+                    '细胞数: ' + s.n_cells + ' | 基因数: ' + s.n_genes +
+                    ' | 稀疏度: ' + (s.sparsity*100).toFixed(1) + '%</div>';
+                if (typeof loadDatasets === 'function') loadDatasets();
+            } else {
+                msg.innerHTML = '<div class="status-msg error">上传失败: ' + data.message + '</div>';
+            }
+        } catch(e) {
+            msg.innerHTML = '<div class="status-msg error">请求失败: ' + e.message + '</div>';
+        } finally {
+            btn.disabled = false; btn.textContent = '🚀 上传并导入';
+        }
+    }
+</script>
+{% endblock %}

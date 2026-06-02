@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}单细胞 ANN 检索系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">单细胞 ANN 检索系统</div>
+        <div class="nav-links">
+            <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">检索搜索</a>
+            <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">数据仪表盘</a>
+            <a href="/management" class="nav-link {% if request.path == '/management' %}active{% endif %}">系统管理</a>
+        </div>
+        <div class="nav-status">
+            <span id="system-indicator" class="indicator offline">●</span>
+            <span id="system-status-text">未加载</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>南开大学 2025-2026 软件工程 第19小组 | 单细胞 ANN 检索系统</p>
+    </footer>
+
+    <script>
+        // 全局状态检查
+        async function checkStatus() {
+            try {
+                const resp = await fetch('/api/status');
+                const data = await resp.json();
+                const indicator = document.getElementById('system-indicator');
+                const text = document.getElementById('system-status-text');
+                if (data.data_loaded && data.index_ready) {
+                    indicator.className = 'indicator online';
+                    text.textContent = '系统就绪';
+                } else if (data.data_loaded) {
+                    indicator.className = 'indicator loading';
+                    text.textContent = '已加载数据';
+                } else {
+                    indicator.className = 'indicator offline';
+                    text.textContent = '未加载';
+                }
+            } catch(e) {
+                document.getElementById('system-status-text').textContent = '连接失败';
+            }
+        }
+        checkStatus();
+        setInterval(checkStatus, 10000);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
