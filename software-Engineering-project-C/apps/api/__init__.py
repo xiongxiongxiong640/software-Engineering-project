@@ -349,14 +349,14 @@ def viz_coordinates():
 
         points = []
         cell_types_set = set()
-        for idx in idx_sample:
-            ct = cell_types_list[idx]
+        for i, idx in enumerate(idx_sample):
+            ct = cell_types_list[int(idx)]
             cell_types_set.add(ct)
             points.append({
-                "x": round(float(xs[idx] * x_scale * 2), 2),
-                "y": round(float(ys[idx] * y_scale * 2), 2),
+                "x": round(float(xs[i] * x_scale * 2), 2),
+                "y": round(float(ys[i] * y_scale * 2), 2),
                 "cell_type": ct,
-                "cell_id": str(adata.obs_names[idx]),
+                "cell_id": str(adata.obs_names[int(idx)]),
             })
 
         return jsonify({

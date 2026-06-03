@@ -300,18 +300,42 @@
     }
 
     function activateIndex(key) {
-        // 发送加载索引请求
-        fetch('/api/index/load', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({filepath: 'data/index/default'})
-        }).then(function(r){return r.json()}).then(function(d){
-            if (d.status === 'success') {
-                var msg = document.getElementById('buildMsg');
-                msg.innerHTML = '<div class="status-msg success">✅ 索引 "'+key+'" 已激活，可用于检索搜索</div>';
-                checkStatus();
-            }
-        }).catch(function(){});
+        var msg = document.getElementById('buildMsg');
+        msg.innerHTML = '<div class="status-msg info">🔄 正在激活索引 "'+key+'" ...</div>';
+
+        fetch('/api/index/list')
+            .then(function(r){return r.json()})
+            .then(function(listData){
+                var idx = (listData.indices||[]).find(function(x){return x.index_key === key;});
+                if (!idx) {
+                    msg.innerHTML = '<div class="status-msg error">❌ 未找到索引记录: '+key+'</div>';
+                    return;
+                }
+                var dsKey = idx.dataset_key;
+                return fetch('/api/load', {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({data_file: dsKey})
+                }).then(function(r){return r.json()}).then(function(loadData){
+                    if (loadData.status !== 'success') {
+                        msg.innerHTML = '<div class="status-msg error">❌ 数据集加载失败: '+loadData.message+'</div>';
+                        return;
+                    }
+                    var s = idx.stats || {};
+                    msg.innerHTML = '<div class="status-msg success">'
+                        + '✅ 索引已激活！<br>'
+                        + '类型: '+(idx.backend||'?')+' / '+(idx.index_type||'?')
+                        + ' | 条目: '+((s.ntotal||0).toLocaleString())
+                        + ' | 维度: '+(s.dimension||'?')
+                        + ' | 度量: '+(idx.distance_metric||'cosine')
+                        + '</div>';
+                    checkStatus();
+                    loadLoadedStatus();
+                });
+            })
+            .catch(function(e){
+                msg.innerHTML = '<div class="status-msg error">❌ 激活失败: '+e.message+'</div>';
+            });
         loadIndexList();
     }
 
