@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}单细胞 ANN 检索系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">单细胞 ANN 检索系统</div>
+        <div class="nav-links">
+            <a href="/management" class="nav-link {% if request.path == '/management' %}active{% endif %}">数据导入</a>
+            <a href="/index-management" class="nav-link {% if request.path == '/index-management' %}active{% endif %}">索引管理</a>
+            <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">检索搜索</a>
+            <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">可视化展示</a>
+            <a href="/user-info" class="nav-link {% if request.path == '/user-info' %}active{% endif %}">用户信息</a>
+        </div>
+        <div class="nav-status">
+            <span id="system-indicator" class="indicator offline">●</span>
+            <span id="system-status-text">未加载</span>
+        </div>
+        <div class="nav-status" style="margin-left:16px">
+            <span id="navUser" style="font-weight:600"></span>
+            <a href="#" onclick="logout()" style="color:#ff6b6b;margin-left:12px;font-size:12px;text-decoration:none;display:none" id="logoutLink">退出</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>南开大学 2025-2026 软件工程 第19小组 | 单细胞 ANN 检索系统</p>
+    </footer>
+
+    <script>
+        // 全局状态检查
+        async function checkStatus() {
+            try {
+                const resp = await fetch('/api/status');
+                const data = await resp.json();
+                const indicator = document.getElementById('system-indicator');
+                const text = document.getElementById('system-status-text');
+                if (data.data_loaded && data.index_ready) {
+                    indicator.className = 'indicator online';
+                    text.textContent = '系统就绪';
+                } else if (data.data_loaded) {
+                    indicator.className = 'indicator loading';
+                    text.textContent = '已加载数据';
+                } else {
+                    indicator.className = 'indicator offline';
+                    text.textContent = '未加载';
+                }
+            } catch(e) {
+                document.getElementById('system-status-text').textContent = '连接失败';
+            }
+        }
+        checkStatus();
+        setInterval(checkStatus, 10000);
+
+        // 登录保护和用户显示
+        (function() {
+            const user = sessionStorage.getItem('ann_user');
+            if (user) {
+                const u = JSON.parse(user);
+                document.getElementById('navUser').textContent = '👤 ' + u.username;
+                document.getElementById('logoutLink').style.display = 'inline';
+            }
+        })();
+
+        function logout() {
+            sessionStorage.removeItem('ann_user');
+            window.location.href = '/login';
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,714 @@
+{% extends "base.html" %}
+{% block title %}系统管理 — 单细胞 ANN 检索系统{% endblock %}
+
+{% block head %}
+<style>
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 18px; margin: 0 0 16px 0; color: #1a1a2e; border-bottom: 2px solid #0f3460; padding-bottom: 8px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px; color: #333; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,.1); }
+
+    .btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+    .btn-primary { background: #0f3460; color: #fff; }
+    .btn-primary:hover { background: #1a4a8a; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { background: #e8e8e8; color: #333; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-danger { background: #c62828; color: #fff; }
+
+    .dataset-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; transition: border-color .2s; }
+    .dataset-item:hover { border-color: #0f3460; }
+    .dataset-item .name { font-weight: 600; }
+    .dataset-item .size { font-size: 12px; color: #999; }
+    .dataset-item.active { border-color: #0f3460; background: #f0f4ff; }
+    .dataset-item.active::after { content: '✓ 已加载'; font-size: 12px; color: #2e7d32; font-weight: 600; }
+
+    .status-msg { padding: 10px 16px; border-radius: 6px; margin: 12px 0; font-size: 13px; }
+    .status-msg.success { background: #e8f5e9; color: #2e7d32; }
+    .status-msg.error { background: #ffebee; color: #c62828; }
+    .status-msg.info { background: #e3f2fd; color: #0f3460; }
+
+    .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .config-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .config-item .key { color: #666; }
+    .config-item .val { font-weight: 600; color: #0f3460; }
+
+    .tab-bar { display: flex; gap: 0; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; background: #f0f0f0; border: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: all .2s; }
+    .tab:first-child { border-radius: 6px 0 0 6px; }
+    .tab:last-child { border-radius: 0 6px 6px 0; }
+    .tab.active { background: #0f3460; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:22px;color:#1a1a2e;margin-bottom:20px">系统管理</h1>
+
+<div class="tab-bar">
+    <button class="tab active" onclick="switchTab('data', this)">数据管理</button>
+    <button class="tab" onclick="switchTab('local', this)">本地导入</button>
+    <button class="tab" onclick="switchTab('upload', this)">上传文件</button>
+    <button class="tab" onclick="switchTab('build', this)">索引构建</button>
+    <button class="tab" onclick="switchTab('index', this)">索引管理</button>
+</div>
+
+<!-- Tab 0: 上传文件 -->
+<div id="tab-upload" style="display:none">
+    <div class="card">
+        <h2>上传单细胞表达矩阵</h2>
+        <p style="font-size:13px;color:#999;margin-bottom:8px">
+            支持 AnnData 格式（.h5ad）和 CSV/TSV 表达矩阵。.h5ad 文件自动提取 PCA 向量和细胞元信息。
+        </p>
+        <div style="border:2px dashed #ddd;border-radius:10px;padding:30px;text-align:center;margin-bottom:16px;background:#fafbfc;cursor:pointer"
+             onclick="document.getElementById('fileInput').click()" id="dropZone">
+            <div style="font-size:36px;margin-bottom:8px">📂</div>
+            <div id="dropText">点击选择文件或拖拽到此处</div>
+            <div style="font-size:12px;color:#999;margin-top:4px">支持 .h5ad / .csv / .tsv / .xlsx</div>
+            <input type="file" id="fileInput" accept=".h5ad,.csv,.tsv,.txt,.xlsx,.xls"
+                   style="display:none" onchange="fileSelected(this)">
+        </div>
+        <div id="fileInfo" style="display:none;margin-bottom:12px;font-size:13px;color:#0f3460;font-weight:600"></div>
+
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0">
+                <label for="uploadDsName">数据集名称</label>
+                <input type="text" id="uploadDsName" placeholder="如：PBMC_3k" style="width:100%">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+                    <input type="checkbox" id="uploadNorm" checked> CPM归一化
+                </label>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400">
+                    <input type="checkbox" id="uploadLog" checked> log1p变换
+                </label>
+            </div>
+            <button class="btn btn-primary" onclick="doUpload()" id="uploadBtn" style="width:auto">🚀 上传并导入</button>
+        </div>
+        <div id="uploadMsg" style="margin-top:12px"></div>
+    </div>
+</div>
+
+<!-- Tab 1: 数据管理 -->
+<div id="tab-data" style="display:block">
+    <div class="card">
+        <h2>可用数据集</h2>
+        <div id="datasetList" style="margin-bottom:16px;">加载中...</div>
+        <button class="btn btn-primary" onclick="loadSelectedDataset()">加载选中数据集并构建索引</button>
+        <div id="dataStatusMsg"></div>
+    </div>
+</div>
+
+<!-- Tab: 索引构建 -->
+<div id="tab-build" style="display:none">
+    <div class="card">
+        <h2>构建 ANN 索引</h2>
+        <p style="font-size:13px;color:#999;margin-bottom:16px">
+            选择一个已加载的数据集，选择 ANN 算法和参数，构建索引供检索使用。
+        </p>
+
+        <div class="form-group">
+            <label>目标数据集</label>
+            <select id="buildDsSelect" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px" onchange="refreshBuildOptions()">
+                <option value="">-- 请先加载数据集 --</option>
+            </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group">
+                <label>检索后端</label>
+                <select id="buildBackend" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px" onchange="refreshAlgoList()">
+                    <option value="faiss">FAISS（GPU 可用，推荐）</option>
+                    <option value="sklearn">scikit-learn（无需额外安装）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>ANN 算法</label>
+                <select id="buildAlgo" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px" onchange="refreshAlgoParams()"></select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>距离度量</label>
+            <select id="buildMetric" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+                <option value="cosine">余弦距离（推荐，关注表达模式相似性）</option>
+                <option value="euclidean">欧氏距离（考虑绝对大小）</option>
+                <option value="l2">平方欧氏距离（不开根号，更快）</option>
+            </select>
+        </div>
+
+        <div id="buildParams" style="margin-bottom:16px"></div>
+
+        <button class="btn btn-primary" onclick="doBuildIndex()" id="buildBtn" style="width:100%">🔨 构建索引</button>
+        <div id="buildMsg" style="margin-top:12px"></div>
+    </div>
+</div>
+
+<!-- Tab 2: 本地导入 -->
+<div id="tab-local" style="display:none">
+    <div class="card">
+        <h2>data/ 目录本地文件</h2>
+        <p style="font-size:13px;color:#999;margin-bottom:16px">
+            将 .h5ad 或 CSV/TSV 格式的单细胞数据文件放入 <code>data/</code> 文件夹后在此处一键导入。
+            .h5ad 文件自动提取 PCA 和细胞类型信息。
+        </p>
+        <div id="localFileList" style="margin-bottom:16px;">加载中...</div>
+    </div>
+</div>
+
+<!-- Tab: 索引管理 -->
+<div id="tab-index" style="display:none">
+    <div class="card">
+        <h2>已构建索引</h2>
+        <div id="indexList" style="margin-bottom:16px;">加载中...</div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 登录检查
+    const _user = sessionStorage.getItem('ann_user');
+    if (!_user) { window.location.href = '/login'; }
+    const currentUser = JSON.parse(_user);
+
+    let selectedDataset = null;
+
+    function switchTab(name, el) {
+        ['upload','data','local','build','index'].forEach(t => {
+            document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+        });
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        if (el) el.classList.add('active');
+        if (name === 'index') loadIndexList();
+        if (name === 'local') loadLocalFiles();
+        if (name === 'data') loadDatasets();
+        if (name === 'build') loadBuildTab();
+    }
+
+    // ===== 数据管理 =====
+    async function loadDatasets() {
+        try {
+            const resp = await fetch('/api/datasets');
+            const data = await resp.json();
+            const list = document.getElementById('datasetList');
+            if (!data.datasets || data.datasets.length === 0) {
+                list.innerHTML = '<div style="color:#999;padding:40px;text-align:center">' +
+                    '暂无数据集<br>' +
+                    '<small>请在「上传文件」或「本地导入」页面导入数据</small></div>';
+                return;
+            }
+            list.innerHTML = data.datasets.map((d, i) => {
+                const id = d.key || d.path;
+                const isImported = d.imported || false;
+                const name = d.name || d.filename || '';
+                const stats = d.stats || {};
+                const info = stats.n_cells
+                    ? `${stats.n_cells.toLocaleString()} 细胞 × ${(stats.n_genes||0).toLocaleString()} 基因`
+                    : (d.size_mb ? `${d.size_mb} MB` : '');
+                const typeTag = (d.file_type === 'h5ad' || (d.filename||'').endsWith('.h5ad')) ? ' 🧬' : '';
+                return `
+                <div class="dataset-item" style="flex-wrap:wrap" data-id="${id}">
+                    <div style="flex:1;min-width:200px;cursor:pointer" onclick="selectDataset(this, '${id}')">
+                        <span class="name">${name}${typeTag}</span>
+                        <div class="size">${info}</div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();loadOneDataset('${id}')">📥 载入</button>
+                    <button class="btn btn-sm" style="background:#c62828;color:#fff;margin-left:4px"
+                            onclick="event.stopPropagation();deleteOneDataset('${id}','${name}')">🗑</button>
+                </div>`;
+            }).join('');
+
+            // 检查是否已有加载的数据
+            try {
+                const s = await fetch('/api/status');
+                const sd = await s.json();
+                if (sd.data_loaded) {
+                    // 高亮已加载的
+                    document.querySelectorAll('.dataset-item').forEach(el => {
+                        el.classList.add('active');
+                    });
+                }
+            } catch(e) {}
+        } catch(e) {
+            document.getElementById('datasetList').innerHTML =
+                '<div style="color:#c62828;">获取数据集列表失败: ' + e.message + '</div>';
+        }
+    }
+
+    function selectDataset(el, path) {
+        document.querySelectorAll('.dataset-item').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedDataset = path;
+    }
+
+    async function loadOneDataset(id) {
+        const msg = document.getElementById('dataStatusMsg');
+        msg.innerHTML = '<div class="status-msg info">正在加载数据集并构建索引...</div>';
+        try {
+            const resp = await fetch('/api/load', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({data_file: id})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const s = data.data_summary;
+                msg.innerHTML = `<div class="status-msg success">
+                    ✅ 加载成功！细胞: ${(s.n_cells||0).toLocaleString()} |
+                    基因: ${(s.n_genes||0).toLocaleString()} |
+                    PCA维度: ${s.n_pca_features||'?'}
+                </div>`;
+                checkStatus();
+            } else {
+                msg.innerHTML = `<div class="status-msg error">加载失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    async function deleteOneDataset(id, name) {
+        if (!confirm(`确认删除数据集 "${name}"？此操作不可恢复。`)) return;
+        try {
+            const resp = await fetch('/api/csv-datasets/' + encodeURIComponent(id), { method: 'DELETE' });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                document.getElementById('dataStatusMsg').innerHTML =
+                    '<div class="status-msg success">已删除: ' + name + '</div>';
+                loadDatasets();
+            } else {
+                alert('删除失败: ' + data.message);
+            }
+        } catch(e) {
+            alert('请求失败: ' + e.message);
+        }
+    }
+
+    async function loadSelectedDataset() {
+        if (!selectedDataset) {
+            alert('请先选择一个数据集');
+            return;
+        }
+        const msg = document.getElementById('dataStatusMsg');
+        msg.innerHTML = '<div class="status-msg info">正在加载数据集并构建索引...</div>';
+        try {
+            const resp = await fetch('/api/load', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({data_file: selectedDataset})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const summary = data.data_summary;
+                msg.innerHTML = `<div class="status-msg success">
+                    数据集加载成功！<br>
+                    细胞数: ${summary.n_cells.toLocaleString()} | 
+                    基因数: ${summary.n_genes.toLocaleString()} | 
+                    PCA 维度: ${summary.n_pca_features}
+                </div>`;
+                document.querySelectorAll('.dataset-item').forEach(e => e.classList.add('active'));
+                checkStatus(); // 刷新导航栏状态
+            } else {
+                msg.innerHTML = `<div class="status-msg error">加载失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    // ===== 索引管理 =====
+    async function refreshIndexStatus() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            const container = document.getElementById('indexStatus');
+            if (data.index_ready && data.index_status) {
+                const s = data.index_status;
+                container.innerHTML = `<div class="status-msg success">
+                    索引就绪 | 类型: ${s.backend}/${s.faiss_index_type||s.hnsw_space||''} |
+                    条目: ${s.ntotal?.toLocaleString()} | 维度: ${s.dimension}
+                </div>`;
+            } else {
+                container.innerHTML = '<div class="status-msg info">索引尚未构建或加载</div>';
+            }
+        } catch(e) {
+            document.getElementById('indexStatus').innerHTML =
+                `<div class="status-msg error">无法获取索引状态</div>`;
+        }
+    }
+
+    async function saveIndex() {
+        const path = document.getElementById('indexPath').value.trim();
+        const msg = document.getElementById('indexMsg');
+        msg.innerHTML = '<div class="status-msg info">保存中...</div>';
+        try {
+            const resp = await fetch('/api/index/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({filepath: path})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                msg.innerHTML = `<div class="status-msg success">索引已保存到: ${data.path}</div>`;
+            } else {
+                msg.innerHTML = `<div class="status-msg error">保存失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    async function loadIndex() {
+        const path = document.getElementById('indexPath').value.trim();
+        const msg = document.getElementById('indexMsg');
+        msg.innerHTML = '<div class="status-msg info">加载中...</div>';
+        try {
+            const resp = await fetch('/api/index/load', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({filepath: path})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                msg.innerHTML = `<div class="status-msg success">索引加载成功！条目: ${data.index_status.ntotal?.toLocaleString()}</div>`;
+                refreshIndexStatus();
+            } else {
+                msg.innerHTML = `<div class="status-msg error">加载失败: ${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="status-msg error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    // ===== 索引管理（新版）=====
+    async function loadIndexList() {
+        const container = document.getElementById('indexList');
+        container.innerHTML = '<div style="color:#999;padding:20px;text-align:center">加载中...</div>';
+        try {
+            const resp = await fetch('/api/index/list');
+            const data = await resp.json();
+            if (!data.indices || data.indices.length === 0) {
+                container.innerHTML = '<div style="color:#999;padding:40px;text-align:center">' +
+                    '暂无已构建的索引<br><small>请前往「索引构建」tab 构建索引</small></div>';
+                return;
+            }
+            container.innerHTML = data.indices.map(function(idx) {
+                var s = idx.stats || {};
+                var info = [(s.backend||idx.backend||'?'), (idx.index_type||'?'),
+                    ((s.ntotal||0).toLocaleString())+' 条目', (s.dimension||'?')+' 维',
+                    s.build_time_sec ? s.build_time_sec+'s' : ''].filter(function(x){return x;}).join(' | ');
+                return '<div class="dataset-item" style="flex-wrap:wrap;align-items:center">' +
+                    '<div style="flex:1;min-width:250px">' +
+                    '<span class="name">'+(idx.icon||'🗂')+' '+(idx.index_type||idx.backend)+'</span>' +
+                    '<div class="size" style="color:#0f3460">'+info+'</div>' +
+                    '<div class="size">'+(idx.created_at||'').slice(0,19)+'</div></div>' +
+                    '<button class="btn btn-sm btn-secondary" onclick="useIndex(&#39;'+idx.index_key+'&#39;)">✅ 使用</button>' +
+                    '<button class="btn btn-sm" style="background:#c62828;color:#fff;margin-left:4px" onclick="deleteIndexBtn(&#39;'+idx.index_key+'&#39;)">🗑</button>' +
+                    '</div>';
+            }).join('');
+        } catch(e) { container.innerHTML = '<div style="color:#c62828">加载失败: '+e.message+'</div>'; }
+    }
+
+    function useIndex(key) { alert('索引 "'+key+'" 已激活（当前索引将用于检索）'); checkStatus(); }
+    async function deleteIndexBtn(key) {
+        if (!confirm('确认删除此索引？')) return;
+        try {
+            var resp = await fetch('/api/index/delete', {method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({index_key:key})});
+            var data = await resp.json();
+            if (data.status === 'success') { loadIndexList(); }
+            else { alert('删除失败: '+data.message); }
+        } catch(e) { alert('请求失败: '+e.message); }
+    }
+    loadDatasets();
+
+    // ===== 本地导入 =====
+    async function loadLocalFiles() {
+        const container = document.getElementById('localFileList');
+        container.innerHTML = '<div style="color:#999;padding:20px;text-align:center">扫描中...</div>';
+        try {
+            const resp = await fetch('/api/local-files');
+            const data = await resp.json();
+            if (!data.files || data.files.length === 0) {
+                container.innerHTML = '<div style="color:#999;padding:40px;text-align:center">' +
+                    'data/ 目录下没有可导入的 CSV/TSV 文件<br>' +
+                    '<small>请将数据文件放入 data/ 文件夹后刷新</small></div>';
+                return;
+            }
+            container.innerHTML = data.files.map((f, i) => {
+                const labelBadge = f.has_labels ? ' 🏷 有标签' : '';
+                const typeBadge = f.is_h5ad ? ' 🧬 h5ad' : '';
+                const defaultName = f.filename.replace(/\.(h5ad|csv|tsv|txt)$/i, '');
+                const safeIdx = 'lf_' + i;
+                return `
+                <div class="dataset-item" style="flex-direction:column;align-items:stretch">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span class="name">📄 ${f.filename}${typeBadge}${labelBadge}</span>
+                        <span class="size">${f.size_mb} MB | ${f.ext.toUpperCase()}</span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                        <input type="text" id="${safeIdx}_name"
+                               value="${defaultName}" placeholder="数据集名称"
+                               style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px">
+                        <button class="btn btn-sm btn-primary local-import-btn"
+                                data-idx="${i}" data-filepath="${f.path}" data-name-id="${safeIdx}_name">
+                            📥 导入
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+            // 用事件委托绑定点击
+            document.querySelectorAll('.local-import-btn').forEach(btn => {
+                btn.onclick = function() {
+                    const fp = this.getAttribute('data-filepath');
+                    const nameEl = document.getElementById(this.getAttribute('data-name-id'));
+                    const dsName = nameEl ? nameEl.value : '';
+                    importLocalFile(fp, dsName);
+                };
+            });
+        } catch(e) {
+            container.innerHTML = '<div style="color:#c62828">获取本地文件失败: ' + e.message + '</div>';
+        }
+    }
+
+    async function importLocalFile(filepath, dsName) {
+        if (!dsName) { _showLocalStatus('请输入数据集名称', 'error'); return; }
+        _showLocalStatus('导入中...', 'info');
+        try {
+            const resp = await fetch('/api/local-files/import', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    filepath: filepath, dataset_name: dsName,
+                    username: sessionStorage.getItem('ann_user')
+                        ? JSON.parse(sessionStorage.getItem('ann_user')).username : 'admin',
+                    normalize: false, log_transform: false
+                })
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const s = data.stats;
+                _showLocalStatus('导入成功！Key: ' + data.key + ' | 细胞: ' + s.n_cells + ' | 基因: ' + s.n_genes, 'success');
+                if (typeof loadDatasets === 'function') loadDatasets();
+                loadLocalFiles();
+            } else {
+                _showLocalStatus('导入失败: ' + data.message, 'error');
+            }
+        } catch(e) {
+            _showLocalStatus('请求失败: ' + e.message, 'error');
+        }
+    }
+
+    function _showLocalStatus(msg, type) {
+        const el = document.getElementById('localFileList');
+        const div = document.createElement('div');
+        div.className = 'status-msg ' + type;
+        div.textContent = msg;
+        el.parentNode.insertBefore(div, el);
+        setTimeout(function(){ div.remove(); }, 8000);
+    }
+
+    // ===== 文件上传 =====
+    let selectedFile = null;
+
+    function fileSelected(input) {
+        if (input.files.length > 0) {
+            selectedFile = input.files[0];
+            const mb = (selectedFile.size / (1024*1024)).toFixed(2);
+            document.getElementById('fileInfo').textContent = '已选择: ' + selectedFile.name + ' (' + mb + ' MB)';
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('dropText').textContent = '点击更换文件';
+            if (!document.getElementById('uploadDsName').value) {
+                document.getElementById('uploadDsName').value =
+                    selectedFile.name.replace(/\.(csv|tsv|txt|xlsx|xls)$/i, '');
+            }
+        }
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#0f3460'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#ddd'; });
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault(); dropZone.style.borderColor = '#ddd';
+        if (e.dataTransfer.files.length > 0) {
+            document.getElementById('fileInput').files = e.dataTransfer.files;
+            fileSelected(document.getElementById('fileInput'));
+        }
+    });
+
+    async function doUpload() {
+        if (!selectedFile) { alert('请先选择文件'); return; }
+        const dsName = document.getElementById('uploadDsName').value.trim();
+        if (!dsName) { alert('请输入数据集名称'); return; }
+        const msg = document.getElementById('uploadMsg');
+        const btn = document.getElementById('uploadBtn');
+        btn.disabled = true; btn.textContent = '上传中...';
+        msg.innerHTML = '<div class="status-msg info">正在上传并处理...</div>';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('dataset_name', dsName);
+            const u = sessionStorage.getItem('ann_user');
+            formData.append('username', u ? JSON.parse(u).username : 'admin');
+            formData.append('normalize', document.getElementById('uploadNorm').checked);
+            formData.append('log_transform', document.getElementById('uploadLog').checked);
+
+            const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const s = data.stats;
+                msg.innerHTML = '<div class="status-msg success">' +
+                    '上传成功！Key: ' + data.key + '<br>' +
+                    '细胞数: ' + s.n_cells + ' | 基因数: ' + s.n_genes +
+                    ' | 稀疏度: ' + (s.sparsity*100).toFixed(1) + '%</div>';
+                if (typeof loadDatasets === 'function') loadDatasets();
+            } else {
+                msg.innerHTML = '<div class="status-msg error">上传失败: ' + data.message + '</div>';
+            }
+        } catch(e) {
+            msg.innerHTML = '<div class="status-msg error">请求失败: ' + e.message + '</div>';
+        } finally {
+            btn.disabled = false; btn.textContent = '🚀 上传并导入';
+        }
+    }
+
+    // ===== 索引构建 =====
+    const algoMap = {
+        faiss: [
+            {v:'FAISS-Flat',      n:'FAISS Flat — 暴力搜索，精确但慢', d:'适合 < 1万 细胞'},
+            {v:'FAISS-IVFFlat',   n:'FAISS IVF — 倒排索引，速度快', d:'适合 1万~100万，推荐'},
+            {v:'FAISS-IVFPQ',     n:'FAISS IVFPQ — 乘积量化，省内存', d:'适合 100万+ 超大规模'},
+            {v:'FAISS-HNSWFlat',  n:'FAISS HNSW — 图结构，高召回率', d:'适合高维数据，速度快精度高'},
+        ],
+        sklearn: [
+            {v:'KDTree',     n:'KDTree — k-d 树，精确搜索', d:'适合低维（<20维）精确'},
+            {v:'BallTree',   n:'BallTree — 球树，通用性强', d:'支持任意距离度量，中低维'},
+            {v:'LSHForest',  n:'LSHForest — 局部敏感哈希', d:'适合超高维，内存敏感场景'},
+        ]
+    };
+
+    function refreshAlgoList() {
+        const be = document.getElementById('buildBackend').value;
+        const sel = document.getElementById('buildAlgo');
+        sel.innerHTML = algoMap[be].map(a =>
+            '<option value="'+a.v+'">'+a.n+' — '+a.d+'</option>'
+        ).join('');
+        refreshAlgoParams();
+    }
+
+    function refreshAlgoParams() {
+        const be = document.getElementById('buildBackend').value;
+        const algo = document.getElementById('buildAlgo').value;
+        const div = document.getElementById('buildParams');
+        let html = '';
+        if (be === 'faiss') {
+            if (algo === 'FAISS-IVFFlat' || algo === 'FAISS-IVFPQ') {
+                html += '<div class="form-group"><label>聚类中心数 (nlist)</label>' +
+                    '<input type="number" id="bpNlist" value="100" min="4" max="1024" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+            if (algo === 'FAISS-HNSWFlat') {
+                html += '<div class="form-group"><label>连接数 (M)</label>' +
+                    '<input type="number" id="bpM" value="32" min="8" max="128" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+        } else {
+            if (algo === 'KDTree' || algo === 'BallTree') {
+                html += '<div class="form-group"><label>叶节点大小 (leaf_size)</label>' +
+                    '<input type="number" id="bpLeaf" value="40" min="10" max="200" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+            if (algo === 'LSHForest') {
+                html += '<div class="form-group"><label>树数量 (n_estimators)</label>' +
+                    '<input type="number" id="bpNEst" value="10" min="2" max="50" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+        }
+        div.innerHTML = html;
+    }
+
+    async function loadBuildTab() {
+        refreshAlgoList();
+        // 加载数据集列表供选择
+        try {
+            const resp = await fetch('/api/datasets');
+            const data = await resp.json();
+            const sel = document.getElementById('buildDsSelect');
+            sel.innerHTML = '<option value="">-- 选择已导入的数据集 --</option>';
+            if (data.datasets && data.datasets.length > 0) {
+                data.datasets.filter(d => d.imported).forEach(d => {
+                    const n = d.name || d.filename || '';
+                    const s = d.stats || {};
+                    const info = s.n_cells ? n+' ('+s.n_cells.toLocaleString()+' 细胞)' : n;
+                    sel.innerHTML += '<option value="'+d.key+'">'+info+'</option>';
+                });
+            }
+            if (data.datasets.filter(d=>d.imported).length === 0) {
+                sel.innerHTML += '<option value="" disabled>未找到已导入的数据集</option>';
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    function refreshBuildOptions() { refreshAlgoList(); }
+
+    async function doBuildIndex() {
+        const dsKey = document.getElementById('buildDsSelect').value;
+        if (!dsKey) { alert('请先选择一个数据集'); return; }
+        const backend = document.getElementById('buildBackend').value;
+        const algo = document.getElementById('buildAlgo').value;
+        const metric = document.getElementById('buildMetric').value;
+
+        const params = {};
+        if (backend === 'faiss') {
+            const nlistEl = document.getElementById('bpNlist');
+            const mEl = document.getElementById('bpM');
+            if (nlistEl) params.nlist = parseInt(nlistEl.value) || 100;
+            if (mEl) params.M = parseInt(mEl.value) || 32;
+        } else {
+            const leafEl = document.getElementById('bpLeaf');
+            const nEstEl = document.getElementById('bpNEst');
+            if (leafEl) params.leaf_size = parseInt(leafEl.value) || 40;
+            if (nEstEl) params.lsh_n_estimators = parseInt(nEstEl.value) || 10;
+        }
+
+        const msg = document.getElementById('buildMsg');
+        const btn = document.getElementById('buildBtn');
+        btn.disabled = true; btn.textContent = '构建中...';
+        msg.innerHTML = '<div class="status-msg info">正在构建 ' + algo + ' 索引，请稍候...</div>';
+
+        try {
+            const resp = await fetch('/api/index/build', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    dataset_key: dsKey, backend: backend,
+                    index_type: algo, distance_metric: metric, params: params
+                })
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const s = data.stats;
+                msg.innerHTML = '<div class="status-msg success">' +
+                    '✅ 索引构建成功！<br>' +
+                    '算法: ' + s.backend + '/' + (s.faiss_index_type||s.index_type||algo) +
+                    ' | 条目: ' + (s.ntotal||0).toLocaleString() +
+                    ' | 耗时: ' + (s.build_time_sec||0) + 's</div>';
+                checkStatus();
+            } else {
+                msg.innerHTML = '<div class="status-msg error">构建失败: ' + data.message + '</div>';
+            }
+        } catch(e) {
+            msg.innerHTML = '<div class="status-msg error">请求失败: ' + e.message + '</div>';
+        } finally {
+            btn.disabled = false; btn.textContent = '🔨 构建索引';
+        }
+    }
+</script>
+{% endblock %}

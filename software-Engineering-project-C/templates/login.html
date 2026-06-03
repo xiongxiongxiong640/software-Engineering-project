@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}登录 — 单细胞 ANN 检索系统{% endblock %}
+
+{% block head %}
+<style>
+    .auth-container {
+        max-width: 420px;
+        margin: 60px auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.1);
+        padding: 40px;
+    }
+    .auth-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 8px;
+    }
+    .auth-subtitle {
+        text-align: center;
+        color: #999;
+        font-size: 13px;
+        margin-bottom: 32px;
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; color: #333; }
+    .form-group input { width: 100%; padding: 12px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: border-color .2s; }
+    .form-group input:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 3px rgba(15,52,96,.08); }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all .2s; }
+    .btn-primary { background: #0f3460; color: #fff; }
+    .btn-primary:hover { background: #1a4a8a; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { background: #e8e8e8; color: #333; margin-top: 8px; }
+    .msg { padding: 10px 14px; border-radius: 6px; margin: 12px 0; font-size: 13px; text-align: center; }
+    .msg-error { background: #ffebee; color: #c62828; }
+    .msg-success { background: #e8f5e9; color: #2e7d32; }
+    .msg-info { background: #e3f2fd; color: #0f3460; }
+    .tab-bar { display: flex; gap: 0; margin-bottom: 24px; }
+    .tab { flex: 1; padding: 8px 0; background: #f0f0f0; border: none; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; transition: all .2s; }
+    .tab:first-child { border-radius: 6px 0 0 6px; }
+    .tab:last-child { border-radius: 0 6px 6px 0; }
+    .tab.active { background: #0f3460; color: #fff; }
+    .hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="tab-bar">
+        <button class="tab active" onclick="switchTab('login')" id="tabLogin">🔑 登录</button>
+        <button class="tab" onclick="switchTab('reg')" id="tabReg">📝 注册</button>
+    </div>
+
+    <!-- 登录表单 -->
+    <div id="formLogin">
+        <form onsubmit="doLogin(event)">
+            <div class="form-group">
+                <label for="loginUser">用户名</label>
+                <input type="text" id="loginUser" placeholder="输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPass">密码</label>
+                <input type="password" id="loginPass" placeholder="输入密码" required>
+            </div>
+            <button type="submit" class="btn btn-primary">登录</button>
+        </form>
+        <div id="loginMsg"></div>
+        <div style="text-align:center; margin-top:12px; font-size:12px; color:#999;">
+            默认管理员：admin / admin123
+        </div>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="formReg" class="hidden">
+        <form onsubmit="doRegister(event)">
+            <div class="form-group">
+                <label for="regUser">用户名（至少 3 个字符）</label>
+                <input type="text" id="regUser" placeholder="设置用户名" required minlength="3">
+            </div>
+            <div class="form-group">
+                <label for="regPass">密码（至少 6 个字符）</label>
+                <input type="password" id="regPass" placeholder="设置密码" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label for="regPass2">确认密码</label>
+                <input type="password" id="regPass2" placeholder="再次输入密码" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary">注册</button>
+        </form>
+        <div id="regMsg"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 已登录直接跳转
+    if (sessionStorage.getItem('ann_user')) { window.location.href = '/'; }
+
+    function switchTab(tab) {
+        if (tab === 'login') {
+            document.getElementById('tabLogin').classList.add('active');
+            document.getElementById('tabReg').classList.remove('active');
+            document.getElementById('formLogin').classList.remove('hidden');
+            document.getElementById('formReg').classList.add('hidden');
+        } else {
+            document.getElementById('tabReg').classList.add('active');
+            document.getElementById('tabLogin').classList.remove('active');
+            document.getElementById('formReg').classList.remove('hidden');
+            document.getElementById('formLogin').classList.add('hidden');
+        }
+    }
+
+    async function doLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('loginUser').value.trim();
+        const password = document.getElementById('loginPass').value;
+        const msg = document.getElementById('loginMsg');
+        msg.innerHTML = '';
+
+        try {
+            const resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                msg.innerHTML = '<div class="msg msg-success">登录成功！</div>';
+                sessionStorage.setItem('ann_user', JSON.stringify(data.user));
+                setTimeout(() => { window.location.href = '/'; }, 500);
+            } else {
+                msg.innerHTML = `<div class="msg msg-error">${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="msg msg-error">请求失败: ${e.message}</div>`;
+        }
+    }
+
+    async function doRegister(e) {
+        e.preventDefault();
+        const username = document.getElementById('regUser').value.trim();
+        const password = document.getElementById('regPass').value;
+        const password2 = document.getElementById('regPass2').value;
+        const msg = document.getElementById('regMsg');
+        msg.innerHTML = '';
+
+        if (password !== password2) {
+            msg.innerHTML = '<div class="msg msg-error">两次密码不一致</div>';
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                msg.innerHTML = '<div class="msg msg-success">注册成功！请切换到登录页面。</div>';
+            } else {
+                msg.innerHTML = `<div class="msg msg-error">${data.message}</div>`;
+            }
+        } catch(e) {
+            msg.innerHTML = `<div class="msg msg-error">请求失败: ${e.message}</div>`;
+        }
+    }
+</script>
+{% endblock %}

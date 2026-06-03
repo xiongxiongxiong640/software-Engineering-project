@@ -1,0 +1,14 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "$2b$12$12Wm.WawXfSij2QK2iEtvePmJPgHjxaXs4PdogNfozQe6.fjfZRga",
+    "role": "admin",
+    "created_at": "2026-06-02T21:27:06.434356"
+  },
+  "Jyyu": {
+    "username": "Jyyu",
+    "password": "$2b$12$gQFgYzJV08y5G7Pcm06RM.3rEnOAkrA7DKd26EN87GMuo.HZPyupi",
+    "role": "user",
+    "created_at": "2026-06-02T22:23:54.984459"
+  }
+}

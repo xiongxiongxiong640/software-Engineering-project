@@ -1,0 +1,45 @@
+目前结构：
+		大家想写可以开始写，写完分别推送到B/C/D分支下就OK。
+		（我后续会在A分支下面写，最后都写完后再合并到main分支）
+		.gitkeep文件只是占位的，大家可以直接删除。
+		有需要的环境配置/库请写在requirements.txt文件里。
+
+对于B：
+	代码放在apps/data_processor下，原始数据下载后放在data文件夹下。
+	希望：
+		提供 load_data(filepath)：返回 adata 对象。filepath其实就是data文件夹下	面的数据
+		提供 get_cell_info(adata, cell_ids)：输入细胞 ID 列表，返回这些细胞的 		cell_type, disease, AgeGroup 以及 X_pca 坐标（用于前端画图）
+		提供get_all_vectors(adata)：提取全量 PCA 矩阵，供 C 建索引。
+		提供get_cell_info_by_indices(adata, indices)：indices是一个行号列表，它	希望返回这些行细胞对应的cell_type, disease, AgeGroup 以及 X_pca 坐标
+对于C:
+	代码放在apps/search_engine下
+        希望：
+		提供 build_index(vectors)：输入所有细胞的 PCA 向量（一个矩阵），构建并	返回 FAISS/HNSW 索引。
+		提供 search(index, query_vector, top_k)：输入查询向量，返回 (距离列表, 相	似细胞的索引列表)。其中index是build_index(vectors)构建的索引
+对于D：
+	前端路由放在apps/home文件夹下，前端页面放在templates文件夹下，
+	如果需要使用图片等，放在static文件夹下。
+	需要前端提供数据类型形如：
+	{
+  		"query_cell_id": "cell_001", 
+  		"top_k": 10
+	}
+	返回给前端的数据类型形如：
+	{
+  		"status": "success",
+ 		 "time_cost_ms": 12.5,
+  		"query_cell": {
+    			"id": "cell_001",
+    			"cell_type": "Hepatocyte",
+    			"pca": [1.23, -0.45]
+ 		 },
+  		"results": [
+    		{
+      			"id": "cell_056",
+      			"distance": 0.12,
+      			"cell_type": "Hepatocyte",
+     			 "disease": "normal",
+      			"pca": [1.21, -0.42]
+    		}
+ 		 ]
+	}
