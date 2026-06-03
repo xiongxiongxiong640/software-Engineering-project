@@ -1,0 +1,22 @@
+{
+  "Jyyu_liver_faiss_FAISS-Flat_20260603173439": {
+    "index_key": "Jyyu_liver_faiss_FAISS-Flat_20260603173439",
+    "backend": "faiss",
+    "index_type": "FAISS-Flat",
+    "distance_metric": "cosine",
+    "dataset_key": "Jyyu_liver_20260603173348",
+    "username": "Jyyu",
+    "stats": {
+      "status": "ready",
+      "backend": "faiss",
+      "distance_metric": "cosine",
+      "index_path": null,
+      "ntotal": 69032,
+      "dimension": 30,
+      "faiss_index_type": "Flat",
+      "build_time_sec": 0.013,
+      "dataset_name": "liver"
+    },
+    "created_at": "2026-06-03T17:34:39.192460"
+  }
+}
