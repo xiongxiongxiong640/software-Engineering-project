@@ -10,8 +10,27 @@
 
 ## 技术栈
 
+| 类别 | 技术 | 说明 |
+|------|------|------|
+| 后端框架 | Flask 3.x | Web 应用框架，Jinja2 模板引擎 |
+| ANN 检索引擎 | FAISS / scikit-learn / HNSWLIB | 三后端可选，FAISS 为主力（支持 Flat/IVFFlat/IVFPQ/HNSWFlat） |
+| 单细胞数据 | AnnData (anndata) | .h5ad 格式数据读写，PCA/UMAP/t-SNE 降维提取 |
+| 科学计算 | NumPy / SciPy / pandas | 向量矩阵运算、数据预处理（CPM 归一化 + log1p 变换） |
+| 前端可视化 | Canvas API | PCA 降维散点图、相似度分布柱状图、细胞类型统计 |
+| 用户认证 | bcrypt | 密码哈希，JSON 文件持久化 |
+| 版本管理 | Git + GitHub | 多分支协作（A/B/C/D 模块分支） |
+
+
 
 ## 数据集
+
+[单细胞组学数据集](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE119098)
+
+## 我的实现说明：
+
+初步完成C模块需要完成的任务，同时对项目框架做了初步搭建，为了防止C模块与项目的实际使用对接出现问题，简单做了一个初始化的小项目以确定C模块可行，具体操作run.py即可，成果如下，后续小组成员开发可供参考
+![alt text](image.png)
+
 
 
 
