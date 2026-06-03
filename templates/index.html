@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}细胞相似性搜索{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- PCA 散点图 -->
+<section class="chart-section">
+    <div class="chart-card">
+        <div class="chart-header">
+            <h2>📊 PCA 细胞分布图</h2>
+            <span class="chart-hint">点击图中任意细胞即可查询其相似细胞 · 滚轮缩放 · 拖拽平移</span>
+        </div>
+        <div id="pca-chart" class="pca-chart"></div>
+        <div id="chart-legend-hint" class="chart-legend-hint">
+            <span class="legend-dot query"></span> 查询细胞
+            <span class="legend-dot result"></span> 相似结果
+            <span class="legend-dot other"></span> 其他细胞
+        </div>
+        <button id="reset-chart-btn" class="btn btn-secondary btn-sm hidden">🔄 重置视图</button>
+    </div>
+</section>
+
+<!-- 搜索栏 + 结果 -->
+<div class="content-row">
+    <!-- 左侧：搜索栏 -->
+    <aside class="search-sidebar">
+        <div class="search-card">
+            <h3>🔍 搜索相似细胞</h3>
+
+            <!-- 当前选中细胞 -->
+            <div id="selected-cell-display" class="selected-cell-display hidden">
+                <span class="selected-label">当前查询细胞</span>
+                <span id="selected-cell-id" class="selected-cell-id">—</span>
+                <span id="selected-cell-type" class="selected-cell-badge">—</span>
+            </div>
+
+            <form id="search-form" class="search-form">
+                <div class="form-group full-width">
+                    <label for="query-cell-id">细胞 ID</label>
+                    <div class="autocomplete-wrapper">
+                        <input
+                            type="text"
+                            id="query-cell-id"
+                            name="query_cell_id"
+                            placeholder="输入 ID 或点击图中细胞"
+                            autocomplete="off"
+                            required
+                        >
+                        <ul id="suggestions" class="suggestions-dropdown hidden"></ul>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="top-k">返回结果数 (top_k)</label>
+                    <input
+                        type="number"
+                        id="top-k"
+                        name="top_k"
+                        value="10"
+                        min="1"
+                        max="50"
+                        required
+                    >
+                </div>
+                <button type="submit" id="search-btn" class="btn btn-primary btn-full">
+                    <span class="btn-text">🔍 搜索</span>
+                    <span class="btn-loading hidden">⏳ 搜索中...</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- 图例 -->
+        <div class="legend-card">
+            <h4>🗂️ 细胞类型</h4>
+            <div id="cell-type-legend" class="cell-type-legend"></div>
+        </div>
+    </aside>
+
+    <!-- 右侧：结果 -->
+    <main id="results-section" class="results-main hidden">
+        <!-- 状态信息 -->
+        <div id="search-status" class="search-status"></div>
+
+        <!-- 查询细胞信息 -->
+        <div class="result-card query-cell-card">
+            <h3>🎯 查询细胞详情</h3>
+            <div id="query-cell-info"></div>
+        </div>
+
+        <!-- 相似细胞结果列表 -->
+        <div class="result-card">
+            <h3>📋 Top-K 相似细胞</h3>
+            <div class="table-container">
+                <table id="results-table" class="results-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>细胞 ID</th>
+                            <th>距离</th>
+                            <th>细胞类型</th>
+                            <th>疾病状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- 空状态提示 -->
+    <div id="empty-state" class="empty-state">
+        <div class="empty-icon">🔬</div>
+        <h3>开始探索细胞数据</h3>
+        <p>在左侧输入细胞 ID 并点击搜索，或直接在 PCA 散点图中<strong>点击任意细胞</strong>即可查询其相似细胞</p>
+    </div>
+</div>
+
+<!-- 错误提示 -->
+<div id="error-toast" class="toast toast-error hidden">
+    <span id="error-message"></span>
+    <button class="toast-close" onclick="dismissError()">✕</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}
