@@ -5,7 +5,7 @@
 <style>
     .search-panel { display: flex; gap: 30px; margin-top: 20px; }
     .search-left { flex: 1; min-width: 300px; }
-    .search-right { flex: 2; }
+    .search-right { flex: 2; min-width: 500px; }
 
     .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 24px; margin-bottom: 20px; }
     .card h2 { font-size: 18px; margin: 0 0 16px 0; color: #1a1a2e; border-bottom: 2px solid #0f3460; padding-bottom: 8px; }
@@ -20,27 +20,31 @@
     .btn-primary { background: #0f3460; color: #fff; }
     .btn-primary:hover { background: #1a4a8a; }
     .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-    .btn-secondary { background: #e8e8e8; color: #333; }
-    .btn-secondary:hover { background: #d0d0d0; }
     .btn-sm { padding: 6px 14px; font-size: 12px; }
 
-    .cell-suggestion { display: inline-block; padding: 4px 10px; margin: 2px; background: #f0f4ff; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background .2s; }
-    .cell-suggestion:hover { background: #d0deff; }
+    .cell-suggestion { display: inline-block; padding: 4px 12px; margin: 2px 4px 2px 0; background: #f0f4ff; border: 1px solid #d0deff; border-radius: 14px; font-size: 12px; cursor: pointer; transition: all .2s; }
+    .cell-suggestion:hover { background: #0f3460; color: #fff; border-color: #0f3460; }
+    .cell-suggestion .ct-tag { font-size: 10px; color: #999; }
 
     .result-card { background: #fafbfc; border-left: 3px solid #0f3460; padding: 12px 16px; margin-bottom: 8px; border-radius: 4px; }
     .result-card.top-hit { border-left-color: #e94560; background: #fff5f5; }
     .result-meta { font-size: 12px; color: #666; }
     .result-meta span { margin-right: 12px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-right: 4px; }
     .badge-type { background: #e3f2fd; color: #1565c0; }
     .badge-disease { background: #fce4ec; color: #c62828; }
     .badge-age { background: #e8f5e9; color: #2e7d32; }
+    .badge-sex { background: #f3e5f5; color: #6a1b9a; }
 
-    .pca-viz { width: 100%; height: 400px; border: 1px solid #eee; border-radius: 8px; margin-top: 20px; background: #fafafa; position: relative; overflow: hidden; }
+    .pca-viz { width: 100%; height: 420px; border: 1px solid #eee; border-radius: 8px; margin-top: 20px; background: #fafafa; position: relative; overflow: hidden; }
     .pca-viz canvas { width: 100%; height: 100%; }
-    .viz-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; }
+    .viz-legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; }
     .viz-legend-item { display: flex; align-items: center; gap: 4px; }
     .viz-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+    .sim-bar-container { display: flex; gap: 12px; align-items: flex-end; height: 100px; margin-top: 12px; padding-top: 10px; }
+    .sim-bar { flex: 1; background: linear-gradient(0deg, #0f3460, #1a4a8a); border-radius: 3px 3px 0 0; position: relative; min-width: 10px; transition: height .3s; }
+    .sim-bar-label { font-size: 10px; color: #999; text-align: center; margin-top: 4px; }
 
     .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,.7); z-index: 100; justify-content: center; align-items: center; }
     .loading-overlay.active { display: flex; }
@@ -50,41 +54,67 @@
     .time-badge { font-size: 12px; color: #0f3460; background: #e3f2fd; padding: 2px 8px; border-radius: 4px; }
     .empty-state { text-align: center; padding: 60px 20px; color: #999; }
     .error-msg { color: #c62828; background: #ffebee; padding: 10px 16px; border-radius: 6px; margin: 12px 0; font-size: 13px; }
+
+    .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .stat-mini { background: #f8f9fc; padding: 10px 14px; border-radius: 6px; text-align: center; }
+    .stat-mini .val { font-size: 20px; font-weight: 700; color: #0f3460; }
+    .stat-mini .lbl { font-size: 10px; color: #999; }
+
+    .type-filter { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .type-chip { padding: 3px 10px; border: 1px solid #ddd; border-radius: 12px; font-size: 11px; cursor: pointer; transition: all .2s; background: #fff; }
+    .type-chip:hover { border-color: #0f3460; }
+    .type-chip.active { background: #0f3460; color: #fff; border-color: #0f3460; }
+
+    .history-item { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; cursor: pointer; transition: background .2s; }
+    .history-item:hover { background: #f0f4ff; }
+
+    .index-banner { display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, #f0f4ff, #e8f0fe); border: 1px solid #d0deff; border-radius: 10px; padding: 12px 20px; margin-bottom: 16px; }
+    .index-banner .ib-icon { font-size: 28px; }
+    .index-banner .ib-info { flex: 1; }
+    .index-banner .ib-title { font-weight: 600; font-size: 13px; color: #0f3460; }
+    .index-banner .ib-detail { font-size: 12px; color: #666; }
+    .index-banner .ib-badge { padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .ib-active { background: #e8f5e9; color: #2e7d32; }
+    .ib-inactive { background: #ffebee; color: #c62828; }
+
+    @media (max-width: 900px) { .search-panel { flex-direction: column; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<!-- 索引关联信息 -->
+<div class="index-banner" id="indexBanner">
+    <div class="ib-icon">🗂</div>
+    <div class="ib-info">
+        <div class="ib-title" id="ibTitle">加载中...</div>
+        <div class="ib-detail" id="ibDetail"></div>
+    </div>
+    <span class="ib-badge ib-inactive" id="ibBadge">未激活</span>
 </div>
 
 <div class="search-panel">
-    <!-- 左侧：搜索表单 -->
     <div class="search-left">
         <div class="card">
             <h2>细胞相似性搜索</h2>
-
             <div class="form-group">
                 <label for="queryCellId">查询细胞 ID</label>
-                <input type="text" id="queryCellId" placeholder="输入细胞 ID，如 cell_001" list="cellSuggestions">
+                <input type="text" id="queryCellId" placeholder="输入细胞 ID 或点击下方推荐" list="cellSuggestions">
                 <datalist id="cellSuggestions"></datalist>
             </div>
-
             <div class="form-group">
                 <label for="topK">返回数量 (top_k)</label>
                 <input type="number" id="topK" value="10" min="1" max="100">
             </div>
-
             <div class="form-group">
                 <label for="filterCellType">限定细胞类型（可选）</label>
                 <select id="filterCellType">
                     <option value="">不限定</option>
                 </select>
+                <div class="type-filter" id="typeChips"></div>
             </div>
-
-            <button class="btn btn-primary" id="searchBtn" onclick="doSearch()" style="width:100%">
-                搜索相似细胞
-            </button>
+            <button class="btn btn-primary" id="searchBtn" onclick="doSearch()" style="width:100%">🔍 搜索相似细胞</button>
 
             <div style="margin-top: 16px;">
                 <h3>随机推荐细胞</h3>
@@ -93,34 +123,53 @@
         </div>
 
         <div class="card">
-            <h2>查询细胞信息</h2>
-            <div id="queryCellInfo" class="empty-state">
-                请先执行搜索
+            <h2>查询细胞详情</h2>
+            <div id="queryCellInfo" class="empty-state">请先执行搜索</div>
+        </div>
+
+        <div class="card">
+            <h2>搜索历史</h2>
+            <div id="searchHistory" style="max-height:200px;overflow-y:auto">
+                <div class="empty-state" style="padding:20px">暂无搜索记录</div>
             </div>
         </div>
     </div>
 
-    <!-- 右侧：搜索结果 -->
     <div class="search-right">
         <div class="card">
             <h2>
                 检索结果
                 <span id="timeCost" class="time-badge" style="display:none;"></span>
             </h2>
-            <div id="searchResults" class="empty-state">
-                在左侧输入细胞 ID 并点击搜索
+            <div id="searchResults" class="empty-state">输入细胞 ID 点击搜索</div>
+        </div>
+
+        <div class="card">
+            <h2>相似度分布</h2>
+            <div id="simDist" style="min-height:120px;display:flex;align-items:center;justify-content:center;color:#999;">
+                搜索后显示相似度分布
             </div>
         </div>
 
         <div class="card">
-            <h2>PCA 可视化（前 2 维）</h2>
+            <h2>PCA 降维可视化（前 2 维）</h2>
             <div id="pcaViz" class="pca-viz">
                 <canvas id="pcaCanvas"></canvas>
             </div>
             <div class="viz-legend">
                 <div class="viz-legend-item"><span class="viz-dot" style="background:#e94560"></span> 查询细胞</div>
-                <div class="viz-legend-item"><span class="viz-dot" style="background:#0f3460"></span> Top-10 结果</div>
-                <div class="viz-legend-item"><span class="viz-dot" style="background:#d0d0d0"></span> 其他细胞</div>
+                <div class="viz-legend-item"><span class="viz-dot" style="background:#0f3460"></span> Top-K 结果</div>
+                <div class="viz-legend-item"><span class="viz-dot" style="background:#d0d0d0"></span> 背景样本</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>结果统计</h2>
+            <div id="resultStats" class="stats-row">
+                <div class="stat-mini"><div class="val">-</div><div class="lbl">平均距离</div></div>
+                <div class="stat-mini"><div class="val">-</div><div class="lbl">最近距离</div></div>
+                <div class="stat-mini"><div class="val">-</div><div class="lbl">同类型数</div></div>
+                <div class="stat-mini"><div class="val">-</div><div class="lbl">查询耗时</div></div>
             </div>
         </div>
     </div>
@@ -129,12 +178,80 @@
 
 {% block scripts %}
 <script>
-    let allCellData = []; // 全局 PCA 坐标缓存
+    if (!sessionStorage.getItem('ann_user')) { window.location.href = '/login'; }
 
-    // 页面加载时获取随机细胞
+    let allCellData = [];
+    let allCellTypes = [];
+    let searchHistory = JSON.parse(sessionStorage.getItem('search_history') || '[]');
+
+    // ===== 索引关联信息 =====
+    async function updateIndexBanner() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            const title = document.getElementById('ibTitle');
+            const detail = document.getElementById('ibDetail');
+            const badge = document.getElementById('ibBadge');
+
+            if (data.index_ready && data.index_status) {
+                const s = data.index_status;
+                const backendName = s.backend === 'hnswlib' ? 'HNSWLIB' : s.backend === 'sklearn' ? 'scikit-learn' : 'FAISS';
+                title.textContent = '检索索引: '+backendName+' / '+(s.faiss_index_type||s.sklearn_index_type||s.hnsw_space||'HNSW');
+                detail.textContent = '条目数: '+(s.ntotal ? s.ntotal.toLocaleString() : '?')+
+                    ' | 维度: '+(s.dimension||'?')+
+                    ' | 距离度量: '+(s.distance_metric||s.metric||'cosine');
+                badge.className = 'ib-badge ib-active';
+                badge.textContent = '✅ 已激活';
+            } else {
+                title.textContent = '尚未构建索引';
+                detail.textContent = '请先在「索引管理」页面构建 ANN 索引后再检索';
+                badge.className = 'ib-badge ib-inactive';
+                badge.textContent = '⚠ 未激活';
+            }
+        } catch(e) {
+            document.getElementById('ibTitle').textContent = '索引状态获取失败';
+        }
+    }
+
+    // ===== 初始化 =====
     async function init() {
+        await updateIndexBanner();
+        await loadDataInfo();
         await loadRandomCells();
-        await loadCellTypes();
+        renderHistory();
+        // 每30秒刷新索引状态
+        setInterval(updateIndexBanner, 30000);
+    }
+
+    async function loadDataInfo() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            if (data.data_summary && data.data_summary.cell_types) {
+                allCellTypes = data.data_summary.cell_types;
+                const sel = document.getElementById('filterCellType');
+                const chips = document.getElementById('typeChips');
+
+                // 下拉框
+                allCellTypes.sort();
+                allCellTypes.forEach(ct => {
+                    const opt = document.createElement('option');
+                    opt.value = ct; opt.textContent = ct;
+                    sel.appendChild(opt);
+                });
+
+                // 快捷类型筛选 chips
+                const topTypes = allCellTypes.slice(0, 8);
+                chips.innerHTML = topTypes.map(ct =>
+                    '<span class="type-chip" data-ct="' + ct + '" onclick="filterByType(\'' + ct + '\')">' + ct + '</span>'
+                ).join('');
+            }
+        } catch(e) {}
+    }
+
+    function filterByType(ct) {
+        document.getElementById('filterCellType').value = ct;
+        document.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.getAttribute('data-ct') === ct));
     }
 
     async function loadRandomCells() {
@@ -148,211 +265,253 @@
             data.cells.forEach(cell => {
                 const el = document.createElement('span');
                 el.className = 'cell-suggestion';
-                el.textContent = cell.id;
+                el.innerHTML = cell.id + ' <span class="ct-tag">' + (cell.cell_type||'?') + '</span>';
                 el.title = cell.cell_type;
                 el.onclick = () => {
                     document.getElementById('queryCellId').value = cell.id;
                     doSearch();
                 };
                 container.appendChild(el);
-
                 const opt = document.createElement('option');
-                opt.value = cell.id;
-                opt.textContent = `${cell.id} (${cell.cell_type})`;
+                opt.value = cell.id; opt.textContent = cell.id + ' (' + cell.cell_type + ')';
                 datalist.appendChild(opt);
             });
-        } catch(e) {
-            console.error('获取随机细胞失败:', e);
-        }
+        } catch(e) { console.error('获取随机细胞失败:', e); }
     }
 
-    async function loadCellTypes() {
-        try {
-            const resp = await fetch('/api/status');
-            const data = await resp.json();
-            if (data.data_summary && data.data_summary.cell_types) {
-                const sel = document.getElementById('filterCellType');
-                data.data_summary.cell_types.forEach(ct => {
-                    const opt = document.createElement('option');
-                    opt.value = ct;
-                    opt.textContent = ct;
-                    sel.appendChild(opt);
-                });
-            }
-        } catch(e) {}
-    }
-
+    // ===== 搜索 =====
     async function doSearch() {
         const cellId = document.getElementById('queryCellId').value.trim();
         const topK = parseInt(document.getElementById('topK').value) || 10;
         const filterType = document.getElementById('filterCellType').value;
 
-        if (!cellId) {
-            alert('请输入查询细胞 ID');
-            return;
-        }
+        if (!cellId) { alert('请输入查询细胞 ID'); return; }
 
         setLoading(true);
         const btn = document.getElementById('searchBtn');
-        btn.disabled = true;
-        btn.textContent = '搜索中...';
+        btn.disabled = true; btn.textContent = '搜索中...';
 
         try {
             const resp = await fetch('/api/search', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    query_cell_id: cellId,
-                    top_k: topK,
-                    filter_cell_type: filterType || null
-                })
+                body: JSON.stringify({ query_cell_id: cellId, top_k: topK, filter_cell_type: filterType || null })
             });
             const data = await resp.json();
-
-            // 显示查询细胞信息
-            renderQueryCell(data.query_cell);
 
             // 显示耗时
             const timeEl = document.getElementById('timeCost');
             timeEl.style.display = 'inline';
-            timeEl.textContent = `⏱ ${data.time_cost_ms} ms`;
+            timeEl.textContent = '⏱ ' + data.time_cost_ms + ' ms';
 
             if (data.status === 'error') {
-                document.getElementById('searchResults').innerHTML =
-                    `<div class="error-msg">${data.message}</div>`;
+                document.getElementById('searchResults').innerHTML = '<div class="error-msg">' + data.message + '</div>';
                 return;
             }
 
-            // 渲染搜索结果
+            // 渲染查询细胞
+            renderQueryCell(data.query_cell);
+
+            // 渲染结果
             renderResults(data.results);
 
-            // 渲染 PCA 可视化
+            // 渲染相似度分布
+            renderSimDistribution(data.results);
+
+            // 渲染结果统计
+            renderStats(data.results, data.time_cost_ms, data.query_cell);
+
+            // 渲染 PCA
             if (data.query_cell.pca && data.query_cell.pca.length >= 2) {
-                renderPCA(data.query_cell, data.results);
+                renderPCAEnhanced(data.query_cell, data.results);
             }
+
+            // 添加到历史
+            addHistory(cellId, data.time_cost_ms, data.results.length);
+
         } catch(e) {
-            document.getElementById('searchResults').innerHTML =
-                `<div class="error-msg">请求失败: ${e.message}</div>`;
+            document.getElementById('searchResults').innerHTML = '<div class="error-msg">请求失败: ' + e.message + '</div>';
         } finally {
             setLoading(false);
-            btn.disabled = false;
-            btn.textContent = '搜索相似细胞';
+            btn.disabled = false; btn.textContent = '🔍 搜索相似细胞';
         }
     }
 
     function renderQueryCell(cell) {
         const container = document.getElementById('queryCellInfo');
-        if (!cell || !cell.id) {
-            container.innerHTML = '<div class="empty-state">无查询细胞信息</div>';
-            return;
-        }
+        if (!cell || !cell.id) { container.innerHTML = '<div class="empty-state">无查询细胞信息</div>'; return; }
         container.innerHTML = `
             <div class="result-card top-hit">
                 <strong>${cell.id}</strong>
                 <div class="result-meta" style="margin-top:4px">
                     <span class="badge badge-type">${cell.cell_type || 'unknown'}</span>
-                    ${cell.disease ? `<span class="badge badge-disease">${cell.disease}</span>` : ''}
-                    ${cell.AgeGroup ? `<span class="badge badge-age">${cell.AgeGroup}</span>` : ''}
+                    ${cell.disease ? '<span class="badge badge-disease">'+cell.disease+'</span>' : ''}
+                    ${cell.AgeGroup ? '<span class="badge badge-age">'+cell.AgeGroup+'</span>' : ''}
+                    ${cell.sex ? '<span class="badge badge-sex">'+cell.sex+'</span>' : ''}
                 </div>
-                <div style="font-size:12px;color:#999;margin-top:4px">PCA: [${(cell.pca||[0,0]).map(v=>v.toFixed(3)).join(', ')}]</div>
-            </div>
-        `;
+                <div style="font-size:12px;color:#999;margin-top:4px">PCA: [${(cell.pca||[0,0]).slice(0,2).map(v=>v.toFixed(3)).join(', ')}]</div>
+            </div>`;
     }
 
     function renderResults(results) {
         const container = document.getElementById('searchResults');
         if (!results || results.length === 0) {
-            container.innerHTML = '<div class="empty-state">未找到相似细胞</div>';
-            return;
+            container.innerHTML = '<div class="empty-state">未找到相似细胞</div>'; return;
         }
-
-        container.innerHTML = results.map((r, i) => `
-            <div class="result-card ${i === 0 ? 'top-hit' : ''}">
+        container.innerHTML = results.map((r, i) => {
+            const distPct = r.distance != null ? ((1 - Math.min(r.distance, 1)) * 100).toFixed(1) : '?';
+            return `<div class="result-card${i===0?' top-hit':''}">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <strong>#${i+1} ${r.id}</strong>
-                    <span style="font-size:12px;color:#0f3460;font-weight:600">距离: ${r.distance.toFixed(4)}</span>
+                    <div>
+                        <span style="font-size:12px;color:#0f3460;font-weight:600">距离: ${r.distance != null ? r.distance.toFixed(4) : '?'}</span>
+                        <span style="font-size:11px;color:#999;margin-left:8px">相似度: ${distPct}%</span>
+                    </div>
                 </div>
                 <div class="result-meta" style="margin-top:4px">
-                    <span class="badge badge-type">${r.cell_type || 'unknown'}</span>
-                    ${r.disease ? `<span class="badge badge-disease">${r.disease}</span>` : ''}
-                    ${r.AgeGroup ? `<span class="badge badge-age">${r.AgeGroup}</span>` : ''}
+                    <span class="badge badge-type">${r.cell_type||'unknown'}</span>
+                    ${r.disease ? '<span class="badge badge-disease">'+r.disease+'</span>' : ''}
+                    ${r.AgeGroup ? '<span class="badge badge-age">'+r.AgeGroup+'</span>' : ''}
                 </div>
-                <div style="font-size:12px;color:#999;margin-top:4px">PCA: [${(r.pca||[0,0]).map(v=>v.toFixed(3)).join(', ')}]</div>
-            </div>
-        `).join('');
+                <div style="font-size:12px;color:#999;margin-top:4px">PCA: [${(r.pca||[0,0]).slice(0,2).map(v=>v.toFixed(3)).join(', ')}]</div>
+            </div>`;
+        }).join('');
     }
 
-    function renderPCA(queryCell, results) {
+    function renderSimDistribution(results) {
+        const div = document.getElementById('simDist');
+        if (!results || results.length === 0) {
+            div.innerHTML = '<div style="color:#999">无数据</div>'; return;
+        }
+        const distances = results.map(r => r.distance).filter(d => d != null);
+        if (distances.length === 0) { div.innerHTML = '<div style="color:#999">无距离数据</div>'; return; }
+
+        const maxDist = Math.max(...distances);
+        const minDist = Math.min(...distances);
+        const range = maxDist - minDist || 1;
+
+        div.innerHTML = '<div style="font-size:12px;color:#666;margin-bottom:4px">距离范围: ' +
+            minDist.toFixed(4) + ' ~ ' + maxDist.toFixed(4) + '</div>' +
+            '<div class="sim-bar-container">' +
+            distances.map(d => {
+                const h = Math.max(4, ((maxDist - d) / range) * 80 + 10);
+                return '<div style="display:flex;flex-direction:column;align-items:center;flex:1">' +
+                    '<div class="sim-bar" style="height:'+h+'px"></div>' +
+                    '<div class="sim-bar-label">'+d.toFixed(2)+'</div></div>';
+            }).join('') + '</div>';
+    }
+
+    function renderStats(results, timeMs, queryCell) {
+        const distances = results.filter(r => r.distance != null).map(r => r.distance);
+        const avgDist = distances.length > 0 ? (distances.reduce((a,b)=>a+b,0)/distances.length).toFixed(4) : '-';
+        const minDist = distances.length > 0 ? Math.min(...distances).toFixed(4) : '-';
+        const sameType = results.filter(r => r.cell_type === queryCell.cell_type).length;
+
+        document.getElementById('resultStats').innerHTML = `
+            <div class="stat-mini"><div class="val">${avgDist}</div><div class="lbl">平均距离</div></div>
+            <div class="stat-mini"><div class="val">${minDist}</div><div class="lbl">最近距离</div></div>
+            <div class="stat-mini"><div class="val">${sameType}/${results.length}</div><div class="lbl">同类型细胞</div></div>
+            <div class="stat-mini"><div class="val">${timeMs}ms</div><div class="lbl">查询耗时</div></div>
+        `;
+    }
+
+    function renderPCAEnhanced(queryCell, results) {
         const canvas = document.getElementById('pcaCanvas');
         const container = document.getElementById('pcaViz');
         const w = container.clientWidth;
         const h = container.clientHeight;
         canvas.width = w;
         canvas.height = h;
-
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, w, h);
 
-        // 收集所有点坐标
-        const points = [];
-        if (queryCell.pca && queryCell.pca.length >= 2) {
-            points.push({x: queryCell.pca[0], y: queryCell.pca[1], type: 'query'});
-        }
-        results.forEach(r => {
-            if (r.pca && r.pca.length >= 2) {
-                points.push({x: r.pca[0], y: r.pca[1], type: 'result'});
-            }
-        });
+        // 收集点
+        const qp = queryCell.pca && queryCell.pca.length >= 2 ? {x:queryCell.pca[0],y:queryCell.pca[1]} : null;
+        const rPoints = results.filter(r=>r.pca&&r.pca.length>=2).map(r=>({x:r.pca[0],y:r.pca[1]}));
 
-        if (points.length === 0) return;
+        if (!qp && rPoints.length === 0) return;
+        const allX = [qp?qp.x:0].concat(rPoints.map(p=>p.x));
+        const allY = [qp?qp.y:0].concat(rPoints.map(p=>p.y));
+        const xMin = Math.min(...allX), xMax = Math.max(...allX);
+        const yMin = Math.min(...allY), yMax = Math.max(...allY);
+        const xRange = (xMax-xMin)||1, yRange = (yMax-yMin)||1;
+        const pad = 40;
 
-        // 计算坐标范围
-        const xs = points.map(p => p.x);
-        const ys = points.map(p => p.y);
-        const xMin = Math.min(...xs), xMax = Math.max(...xs);
-        const yMin = Math.min(...ys), yMax = Math.max(...ys);
-        const xRange = xMax - xMin || 1;
-        const yRange = yMax - yMin || 1;
-        const pad = 30;
+        function toScreen(x,y) { return [pad+(x-xMin)/xRange*(w-pad*2), pad+(y-yMin)/yRange*(h-pad*2)]; }
 
-        function toScreen(x, y) {
-            return [
-                pad + (x - xMin) / xRange * (w - pad * 2),
-                pad + (y - yMin) / yRange * (h - pad * 2)
-            ];
+        // 画背景网格
+        ctx.strokeStyle = '#eee'; ctx.lineWidth = 0.5;
+        for (let i = 0; i <= 4; i++) {
+            const gx = pad + (w-pad*2)*i/4;
+            ctx.beginPath(); ctx.moveTo(gx, pad); ctx.lineTo(gx, h-pad); ctx.stroke();
+            const gy = pad + (h-pad*2)*i/4;
+            ctx.beginPath(); ctx.moveTo(pad, gy); ctx.lineTo(w-pad, gy); ctx.stroke();
         }
 
-        // 画所有结果点
-        points.filter(p => p.type === 'result').forEach(p => {
+        // 画结果点
+        rPoints.forEach(p => {
             const [sx, sy] = toScreen(p.x, p.y);
             ctx.beginPath();
-            ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+            ctx.arc(sx, sy, 5, 0, Math.PI*2);
             ctx.fillStyle = '#0f3460';
             ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
         });
 
-        // 画查询点（在最上层）
-        const qp = points.find(p => p.type === 'query');
+        // 画查询点（最大最显眼）
         if (qp) {
             const [sx, sy] = toScreen(qp.x, qp.y);
+            // 光晕
             ctx.beginPath();
-            ctx.arc(sx, sy, 8, 0, Math.PI * 2);
-            ctx.fillStyle = '#e94560';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            ctx.arc(sx, sy, 14, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(233,69,96,.15)'; ctx.fill();
+            // 实心
+            ctx.beginPath();
+            ctx.arc(sx, sy, 8, 0, Math.PI*2);
+            ctx.fillStyle = '#e94560'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            // 标签
+            ctx.fillStyle = '#e94560'; ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('🔍 查询', sx + 12, sy - 6);
         }
+
+        // 坐标轴标签
+        ctx.fillStyle = '#999'; ctx.font = '10px sans-serif';
+        ctx.fillText('PC1', w-pad+2, h/2);
+        ctx.fillText('PC2', w/2-10, pad-5);
+    }
+
+    // ===== 搜索历史 =====
+    function addHistory(cellId, timeMs, nResults) {
+        const entry = { cellId, timeMs, nResults, time: new Date().toLocaleTimeString() };
+        searchHistory.unshift(entry);
+        if (searchHistory.length > 20) searchHistory.pop();
+        sessionStorage.setItem('search_history', JSON.stringify(searchHistory));
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const div = document.getElementById('searchHistory');
+        if (searchHistory.length === 0) {
+            div.innerHTML = '<div class="empty-state" style="padding:20px">暂无搜索记录</div>';
+            return;
+        }
+        div.innerHTML = searchHistory.map((h,i) =>
+            '<div class="history-item" onclick="replaySearch(\''+h.cellId+'\')">' +
+            '<span style="color:#0f3460;font-weight:600">'+h.cellId+'</span>' +
+            '<span style="color:#999;float:right">'+h.time+' | '+h.timeMs+'ms | '+h.nResults+' 结果</span></div>'
+        ).join('');
+    }
+
+    function replaySearch(cellId) {
+        document.getElementById('queryCellId').value = cellId;
+        doSearch();
     }
 
     function setLoading(loading) {
         document.getElementById('loadingOverlay').className = loading ? 'loading-overlay active' : 'loading-overlay';
     }
 
-    // 回车搜索
     document.getElementById('queryCellId').addEventListener('keydown', e => {
         if (e.key === 'Enter') doSearch();
     });

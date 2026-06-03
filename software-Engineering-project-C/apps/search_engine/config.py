@@ -23,7 +23,14 @@ FAISS_INDEX_TYPES = Literal[
 ]
 
 # 后端类型
-BACKEND_TYPES = Literal["faiss", "hnswlib"]
+BACKEND_TYPES = Literal["faiss", "hnswlib", "sklearn"]
+
+# sklearn 索引类型
+SKLEARN_INDEX_TYPES = Literal[
+    "KDTree",       # k-d 树，适合低维精确搜索
+    "BallTree",     # 球树，支持任意距离度量
+    "LSHForest",    # 局部敏感哈希森林，适合超高维近似搜索
+]
 
 
 # ---------------------------------------------------------------------------
@@ -118,6 +125,16 @@ class SearchConfig:
     verbose: bool = False
     """是否输出详细日志"""
 
+    # ---- sklearn 专属参数 ----
+    sklearn_index_type: SKLEARN_INDEX_TYPES = "BallTree"
+    """sklearn 索引类型: KDTree/BallTree/LSHForest"""
+
+    leaf_size: int = 40
+    """KDTree/BallTree 叶节点大小"""
+
+    lsh_n_estimators: int = 10
+    """LSHForest 的树数量"""
+
     # ==================================================================
     # 便捷方法
     # ==================================================================
@@ -148,6 +165,9 @@ class SearchConfig:
             "hnsw_M": self.hnsw_M,
             "hnsw_ef_construction": self.hnsw_ef_construction,
             "hnsw_ef_search": self.hnsw_ef_search,
+            "sklearn_index_type": self.sklearn_index_type,
+            "leaf_size": self.leaf_size,
+            "lsh_n_estimators": self.lsh_n_estimators,
         }
 
     @classmethod

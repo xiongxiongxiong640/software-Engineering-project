@@ -24,7 +24,7 @@ import numpy as np
 
 def _get_project_root() -> str:
     """获取项目根目录"""
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # ======================================================================
@@ -132,13 +132,13 @@ class IndexService:
     def save(self, filepath: str) -> str:
         """保存索引"""
         root = _get_project_root()
-        full_path = os.path.join(root, filepath)
+        full_path = os.path.normpath(os.path.join(root, filepath))
         return self._manager.save(full_path)
 
     def load(self, filepath: str) -> Dict:
         """加载索引"""
         root = _get_project_root()
-        full_path = os.path.join(root, filepath)
+        full_path = os.path.normpath(os.path.join(root, filepath))
         self._manager.load(full_path)
         return self._manager.get_stats()
 

@@ -84,8 +84,10 @@ def build_index(
         return _build_faiss_index(vectors, dim, config)
     elif config.backend == "hnswlib":
         return _build_hnswlib_index(vectors, dim, config)
+    elif config.backend == "sklearn":
+        return _build_sklearn_index(vectors, dim, config)
     else:
-        raise ValueError(f"不支持的后端类型: {config.backend}，请使用 'faiss' 或 'hnswlib'")
+        raise ValueError(f"不支持的后端类型: {config.backend}，请使用 'faiss'、'hnswlib' 或 'sklearn'")
 
 
 # ======================================================================
@@ -108,6 +110,7 @@ def save_index(index: IndexLike, filepath: str) -> None:
         >>> save_index(index, "data/index/liver_ivf")
         # 生成: data/index/liver_ivf.faiss + data/index/liver_ivf.pkl
     """
+    filepath = os.path.normpath(filepath)
     os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
 
     # ---- 判断索引类型 ----
@@ -128,7 +131,12 @@ def save_index(index: IndexLike, filepath: str) -> None:
     except ImportError:
         pass
 
-    raise TypeError(f"不支持的索引类型: {type(index)}。必须是 faiss.Index 或 hnswlib.Index")
+    # sklearn 索引（dict 包装）
+    if isinstance(index, dict) and index.get("_backend") == "sklearn":
+        _save_sklearn_index(index, filepath)
+        return
+
+    raise TypeError(f"不支持的索引类型: {type(index)}")
 
 
 def load_index(
@@ -156,11 +164,14 @@ def load_index(
 
     faiss_path = filepath + ".faiss"
     hnsw_path = filepath + ".hnsw.bin"
+    pkl_path = filepath + ".pkl"
 
     if os.path.exists(faiss_path):
         return _load_faiss_index(filepath, config)
     elif os.path.exists(hnsw_path):
         return _load_hnswlib_index(filepath, config)
+    elif os.path.exists(pkl_path):
+        return _load_sklearn_index(filepath, config)
     else:
         raise FileNotFoundError(
             f"未找到索引文件: 尝试过 {faiss_path} 和 {hnsw_path}"
@@ -406,3 +417,84 @@ def _save_index_db(db: dict):
     import json
     with open(_INDEX_DB_FILE, "w", encoding="utf-8") as f:
         json.dump(db, f, ensure_ascii=False, indent=2)
+
+
+# ======================================================================
+#  sklearn 索引构建 / 保存 / 加载
+# ======================================================================
+
+def _build_sklearn_index(vectors: np.ndarray, dim: int, config: SearchConfig) -> dict:
+    """构建 sklearn 索引（返回 dict 包装）"""
+    from sklearn.neighbors import KDTree, BallTree
+    from sklearn.neighbors import NearestNeighbors
+
+    idx_type = config.sklearn_index_type
+    metric = "euclidean" if config.distance_metric in ("l2", "euclidean") else "cosine"
+
+    if idx_type == "KDTree":
+        tree = KDTree(vectors, leaf_size=config.leaf_size, metric=metric)
+    elif idx_type == "BallTree":
+        tree = BallTree(vectors, leaf_size=config.leaf_size, metric=metric)
+    elif idx_type == "LSHForest":
+        # sklearn 新版已移除 LSHForest，改用 NearestNeighbors + brute force
+        tree = NearestNeighbors(
+            n_neighbors=min(config.lsh_n_estimators * 5, vectors.shape[0]),
+            algorithm="brute",
+            metric=metric,
+        )
+        tree.fit(vectors)
+    else:
+        raise ValueError(f"不支持的 sklearn 索引类型: {idx_type}")
+
+    if config.verbose:
+        print(f"[sklearn] {idx_type} 索引构建完成: {vectors.shape[0]} 条向量, dim={dim}")
+
+    if config.verbose:
+        print(f"[sklearn] {idx_type} 索引构建完成: {vectors.shape[0]} 条向量, dim={dim}")
+
+    return {
+        "_backend": "sklearn",
+        "_type": idx_type,
+        "tree": tree,
+        "metric": metric,
+        "ntotal": vectors.shape[0],
+        "dim": dim,
+    }
+
+
+def _save_sklearn_index(index: dict, filepath: str) -> None:
+    """保存 sklearn 索引"""
+    pkl_path = filepath + ".pkl"
+    meta = {
+        "backend": "sklearn",
+        "index_type": index["_type"],
+        "ntotal": index["ntotal"],
+        "dim": index["dim"],
+        "metric": index["metric"],
+    }
+    with open(pkl_path, "wb") as f:
+        pickle.dump({"tree": index["tree"], "meta": meta}, f)
+
+
+def _load_sklearn_index(filepath: str, config: SearchConfig) -> dict:
+    """加载 sklearn 索引"""
+    pkl_path = filepath + ".pkl"
+    if not os.path.exists(pkl_path):
+        raise FileNotFoundError(f"缺少索引文件: {pkl_path}")
+
+    with open(pkl_path, "rb") as f:
+        data = pickle.load(f)
+
+    tree = data["tree"]
+    m = data["meta"]
+    if config.verbose:
+        print(f"[sklearn] 索引已加载: {m['ntotal']} 条向量, type={m['index_type']}")
+
+    return {
+        "_backend": "sklearn",
+        "_type": m["index_type"],
+        "tree": tree,
+        "metric": m["metric"],
+        "ntotal": m["ntotal"],
+        "dim": m["dim"],
+    }

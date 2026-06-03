@@ -101,6 +101,14 @@ def search(
     except ImportError:
         pass
 
+    # sklearn 索引（dict 包装）
+    if isinstance(index, dict) and index.get("_backend") == "sklearn":
+        distances, indices = _sklearn_search(index, query_vector, top_k, config)
+        elapsed = (time.perf_counter() - t_start) * 1000
+        if config.verbose:
+            print(f"[Retriever] sklearn 检索完成: top_k={top_k}, 耗时={elapsed:.2f}ms")
+        return distances, indices
+
     raise TypeError(f"不支持的索引类型: {type(index)}。必须是由 build_index() 生成的索引对象")
 
 
@@ -218,3 +226,31 @@ def _normalize_single(vec: np.ndarray) -> np.ndarray:
     norm = np.linalg.norm(vec, axis=1, keepdims=True)
     norm = np.where(norm == 0, 1.0, norm)
     return vec / norm
+
+
+# ======================================================================
+#  sklearn 检索
+# ======================================================================
+
+def _sklearn_search(
+    index: dict,
+    query_vector: np.ndarray,
+    top_k: int,
+    config: SearchConfig,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """sklearn 索引检索（KDTree / BallTree / LSHForest）"""
+    tree = index["tree"]
+    idx_type = index.get("_type", "BallTree")
+
+    if idx_type in ("KDTree", "BallTree"):
+        distances, indices = tree.query(query_vector, k=top_k)
+        distances = distances.flatten()
+        indices = indices.flatten().astype(np.int64)
+    elif idx_type == "LSHForest":
+        distances, indices = tree.kneighbors(query_vector, n_neighbors=top_k)
+        distances = distances.flatten()
+        indices = indices.flatten().astype(np.int64)
+    else:
+        raise ValueError(f"不支持的 sklearn 索引类型: {idx_type}")
+
+    return distances, indices

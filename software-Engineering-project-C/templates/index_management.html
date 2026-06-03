@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+{% block title %}索引管理 — 单细胞 ANN 检索系统{% endblock %}
+
+{% block head %}
+<style>
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08); padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 18px; margin: 0 0 16px 0; color: #1a1a2e; border-bottom: 2px solid #0f3460; padding-bottom: 8px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 13px; color: #333; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,.1); }
+
+    .btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+    .btn-primary { background: #0f3460; color: #fff; }
+    .btn-primary:hover { background: #1a4a8a; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary { background: #e8e8e8; color: #333; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-danger { background: #c62828; color: #fff; }
+
+    .dataset-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 8px; }
+    .dataset-item .name { font-weight: 600; font-size: 14px; }
+    .dataset-item .size { font-size: 12px; color: #999; }
+
+    .status-msg { padding: 10px 16px; border-radius: 6px; margin: 12px 0; font-size: 13px; }
+    .status-msg.success { background: #e8f5e9; color: #2e7d32; }
+    .status-msg.error { background: #ffebee; color: #c62828; }
+    .status-msg.info { background: #e3f2fd; color: #0f3460; }
+    .status-msg.warning { background: #fff3e0; color: #e65100; }
+
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .backend-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .backend-option { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: 2px solid #eee; border-radius: 8px; cursor: pointer; transition: all .2s; background: #fff; }
+    .backend-option:hover { border-color: #0f3460; box-shadow: 0 2px 4px rgba(15,52,96,.08); }
+    .backend-option.selected { border-color: #0f3460; background: #f0f4ff; box-shadow: 0 0 0 3px rgba(15,52,96,.12); }
+    .backend-option .backend-name { font-weight: 600; font-size: 14px; color: #1a1a2e; }
+    .backend-option .backend-desc { font-size: 12px; color: #666; margin-top: 2px; }
+    .backend-option .backend-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; display: inline-block; margin-top: 4px; }
+    .badge-recommended { background: #e8f5e9; color: #2e7d32; }
+    .badge-warning { background: #fff3e0; color: #e65100; }
+    .badge-selected { background: #0f3460; color: #fff; }
+
+    .param-row { display: flex; gap: 12px; align-items: flex-end; }
+    .param-row .form-group { flex: 1; margin-bottom: 0; }
+
+    .section-divider { border: none; border-top: 1px dashed #ddd; margin: 24px 0; }
+
+    .loaded-info { background: #f0f4ff; border: 1px solid #d0deff; border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+    .loaded-info .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .loaded-info .dot.active { background: #2e7d32; animation: pulse 1.5s infinite; }
+    .loaded-info .dot.inactive { background: #ccc; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    @media (max-width: 768px) { .backend-selector { grid-template-columns: 1fr; } .config-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:22px;color:#1a1a2e;margin-bottom:20px">索引管理</h1>
+
+<!-- ====== 当前载入数据状态 ====== -->
+<div class="loaded-info" id="loadedStatus">
+    <div class="dot inactive" id="loadedDot"></div>
+    <div>
+        <div style="font-weight:600;font-size:14px;color:#1a1a2e" id="loadedName">未载入数据</div>
+        <div style="font-size:12px;color:#666" id="loadedDetail">请先在「数据导入」页面载入数据集</div>
+    </div>
+</div>
+
+<!-- ====== 索引构建 ====== -->
+<div class="card">
+    <h2>构建 ANN 索引</h2>
+    <p style="font-size:13px;color:#999;margin-bottom:16px">
+        对当前载入的数据集构建 ANN 索引。请先在「数据导入」页面载入数据后再来此处构建。
+    </p>
+
+    <!-- 检索后端选择（3种） -->
+    <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:8px;display:block">检索后端选择</label>
+    <div class="backend-selector" id="backendSelector">
+        <div class="backend-option selected" id="beFaiss" data-be="faiss">
+            <div>
+                <div class="backend-name">🔬 FAISS</div>
+                <div class="backend-desc">Facebook AI，GPU 可用</div>
+            </div>
+            <span class="backend-badge badge-recommended">推荐</span>
+        </div>
+        <div class="backend-option" id="beSklearn" data-be="sklearn">
+            <div>
+                <div class="backend-name">📊 scikit-learn</div>
+                <div class="backend-desc">纯 Python，无需额外安装</div>
+            </div>
+        </div>
+        <div class="backend-option" id="beHnswlib" data-be="hnswlib">
+            <div>
+                <div class="backend-name">🌐 HNSWLIB</div>
+                <div class="backend-desc">轻量 HNSW，内存友好</div>
+            </div>
+            <span class="backend-badge badge-warning">需安装</span>
+        </div>
+    </div>
+    <input type="hidden" id="buildBackend" value="faiss">
+
+    <!-- ANN 算法选择 -->
+    <div class="form-group">
+        <label>ANN 算法（当前后端可选 <span id="algoCount">4</span> 种）</label>
+        <select id="buildAlgo" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px" onchange="refreshAlgoParams()">
+        </select>
+    </div>
+
+    <!-- 距离度量 -->
+    <div class="form-group">
+        <label>距离度量</label>
+        <select id="buildMetric" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+            <option value="cosine">余弦距离（推荐，关注表达模式相似性）</option>
+            <option value="euclidean">欧氏距离（考虑绝对大小）</option>
+            <option value="l2">平方欧氏距离（不开根号，更快）</option>
+            <option value="ip">内积（适合已归一化向量）</option>
+        </select>
+    </div>
+
+    <!-- 动态算法参数 -->
+    <div id="buildParams" style="margin-bottom:16px"></div>
+
+    <button class="btn btn-primary" onclick="doBuildIndex()" id="buildBtn" style="width:100%">🔨 构建索引</button>
+    <div id="buildMsg" style="margin-top:12px"></div>
+</div>
+
+<hr class="section-divider">
+
+<!-- ====== 已构建索引列表 ====== -->
+<div class="card">
+    <h2>已构建索引</h2>
+    <div id="indexList" style="margin-bottom:16px;">加载中...</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const _user = sessionStorage.getItem('ann_user');
+    if (!_user) { window.location.href = '/login'; }
+
+    let currentBackend = 'faiss';
+    let dataLoaded = false;
+
+    // 算法配置：每种后端 ≥3 种
+    const algoConfig = {
+        faiss: [
+            {v:'FAISS-Flat',      n:'FAISS Flat — 暴力搜索',           d:'精确但慢，适合 < 1万 细胞'},
+            {v:'FAISS-IVFFlat',   n:'FAISS IVF — 倒排索引（推荐）',     d:'聚类加速，适合 1万~100万'},
+            {v:'FAISS-IVFPQ',     n:'FAISS IVFPQ — 乘积量化',           d:'内存压缩，适合 100万+ 超大'},
+            {v:'FAISS-HNSWFlat',  n:'FAISS HNSW — 图结构搜索',          d:'高召回率，适合高维数据'},
+        ],
+        sklearn: [
+            {v:'KDTree',     n:'KDTree — k-d 树',        d:'适合低维 (< 20维) 精确检索'},
+            {v:'BallTree',   n:'BallTree — 球树',         d:'通用性强，支持任意距离度量'},
+            {v:'LSHForest',  n:'LSHForest — 局部敏感哈希', d:'适合超高维，内存敏感场景'},
+        ],
+        hnswlib: [
+            {v:'HNSW',       n:'HNSW — 层级可导航小世界图',  d:'当前最佳 ANN 算法之一'},
+            {v:'HNSW-Cos',   n:'HNSW (余弦空间)',            d:'推荐单细胞数据使用'},
+            {v:'HNSW-L2',    n:'HNSW (欧氏空间)',            d:'适合欧氏距离场景'},
+        ]
+    };
+
+    // ===== 后端选择（修复ID匹配 + 视觉反馈） =====
+    function selectBackend(be) {
+        currentBackend = be;
+        document.getElementById('buildBackend').value = be;
+
+        // 更新选中状态
+        document.querySelectorAll('.backend-option').forEach(el => {
+            const isSelected = el.getAttribute('data-be') === be;
+            el.classList.toggle('selected', isSelected);
+            // 更新徽章
+            const badge = el.querySelector('.backend-badge');
+            if (badge) {
+                if (isSelected) {
+                    badge.className = 'backend-badge badge-selected';
+                    badge.textContent = '已选';
+                } else if (be === 'faiss' && el.getAttribute('data-be') === 'faiss') {
+                    badge.className = 'backend-badge badge-recommended';
+                    badge.textContent = '推荐';
+                } else if (el.getAttribute('data-be') === 'hnswlib') {
+                    badge.className = 'backend-badge badge-warning';
+                    badge.textContent = '需安装';
+                }
+            }
+        });
+
+        refreshAlgoList();
+    }
+
+    // ===== 算法列表 =====
+    function refreshAlgoList() {
+        const sel = document.getElementById('buildAlgo');
+        const configs = algoConfig[currentBackend] || algoConfig['faiss'];
+        document.getElementById('algoCount').textContent = configs.length;
+        sel.innerHTML = configs.map(a =>
+            '<option value="'+a.v+'">'+a.n+' — '+a.d+'</option>'
+        ).join('');
+        refreshAlgoParams();
+    }
+
+    function refreshAlgoParams() {
+        const algo = document.getElementById('buildAlgo').value;
+        const div = document.getElementById('buildParams');
+        let html = '';
+
+        if (currentBackend === 'faiss') {
+            if (algo === 'FAISS-IVFFlat' || algo === 'FAISS-IVFPQ') {
+                html += '<div class="param-row">'
+                    + '<div class="form-group"><label>聚类中心数 (nlist)</label><input type="number" id="bpNlist" value="100" min="4" max="4096" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>'
+                    + '<div class="form-group"><label>查询探测数 (nprobe)</label><input type="number" id="bpNprobe" value="10" min="1" max="100" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>'
+                    + '</div>';
+            }
+            if (algo === 'FAISS-IVFPQ') {
+                html += '<div class="form-group"><label>编码位数 (nbits)</label><input type="number" id="bpNbits" value="8" min="4" max="16" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+            if (algo === 'FAISS-HNSWFlat') {
+                html += '<div class="param-row"><div class="form-group"><label>连接数 (M)</label><input type="number" id="bpM" value="32" min="8" max="128" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div></div>';
+            }
+        } else if (currentBackend === 'sklearn') {
+            if (algo === 'KDTree' || algo === 'BallTree') {
+                html += '<div class="form-group"><label>叶节点大小 (leaf_size)</label><input type="number" id="bpLeaf" value="40" min="10" max="500" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+            if (algo === 'LSHForest') {
+                html += '<div class="form-group"><label>树数量 (n_estimators)</label><input type="number" id="bpNEst" value="10" min="2" max="100" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+            }
+        } else if (currentBackend === 'hnswlib') {
+            html += '<div class="param-row">'
+                + '<div class="form-group"><label>连接数 (M)</label><input type="number" id="bpM" value="16" min="4" max="128" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>'
+                + '<div class="form-group"><label>构建搜索宽度 (ef_construction)</label><input type="number" id="bpEfConst" value="200" min="50" max="1000" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>'
+                + '</div>'
+                + '<div class="form-group"><label>查询搜索宽度 (ef_search)</label><input type="number" id="bpEfSearch" value="50" min="10" max="500" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>';
+        }
+        div.innerHTML = html;
+    }
+
+    // ===== 加载数据状态 =====
+    async function loadLoadedStatus() {
+        try {
+            const resp = await fetch('/api/status');
+            const data = await resp.json();
+            const dot = document.getElementById('loadedDot');
+            const name = document.getElementById('loadedName');
+            const detail = document.getElementById('loadedDetail');
+            const btn = document.getElementById('buildBtn');
+
+            if (data.data_loaded && data.data_summary) {
+                dataLoaded = true;
+                const s = data.data_summary;
+                dot.className = 'dot active';
+                name.textContent = '已载入: ' + (s.n_cells ? s.n_cells.toLocaleString() + ' 个细胞' : '数据就绪');
+                detail.textContent = (s.n_genes||'?') + ' 基因 | PCA维度: ' + (s.n_pca_features||'?')
+                    + ' | 细胞类型: ' + (s.cell_types ? s.cell_types.length + ' 种' : '?');
+                btn.disabled = false;
+                btn.textContent = '🔨 构建索引';
+            } else {
+                dataLoaded = false;
+                dot.className = 'dot inactive';
+                name.textContent = '未载入数据';
+                detail.textContent = '请先在「数据导入」页面载入数据集后再构建索引';
+                btn.disabled = true;
+                btn.textContent = '🔨 请先载入数据';
+            }
+        } catch(e) {
+            document.getElementById('loadedDetail').textContent = '状态获取失败';
+        }
+    }
+
+    // ===== 索引列表 =====
+    async function loadIndexList() {
+        const container = document.getElementById('indexList');
+        container.innerHTML = '<div style="color:#999;padding:20px;text-align:center">加载中...</div>';
+        try {
+            const resp = await fetch('/api/index/list');
+            const data = await resp.json();
+            if (!data.indices || data.indices.length === 0) {
+                container.innerHTML = '<div style="color:#999;padding:40px;text-align:center">暂无已构建的索引<br><small>载入数据后选择算法点击「构建索引」</small></div>';
+                return;
+            }
+            container.innerHTML = data.indices.map(function(idx) {
+                var s = idx.stats || {};
+                var info = [(s.backend||idx.backend||'?'), (idx.index_type||'?'),
+                    ((s.ntotal||0).toLocaleString())+' 条目', (s.dimension||'?')+'维',
+                    s.build_time_sec ? s.build_time_sec+'s' : ''].filter(function(x){return x;}).join(' | ');
+                return '<div class="dataset-item" style="flex-wrap:wrap;align-items:center">'
+                    + '<div style="flex:1;min-width:250px">'
+                    + '<span class="name">🗂 '+(idx.index_type||idx.backend)+'</span>'
+                    + '<div class="size" style="color:#0f3460">'+info+'</div>'
+                    + '<div class="size">'+(idx.created_at||'').slice(0,19)+'</div></div>'
+                    + '<button class="btn btn-sm btn-primary" onclick="activateIndex(\''+idx.index_key+'\')">✅ 激活</button>'
+                    + '<button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteIndexBtn(\''+idx.index_key+'\')">🗑</button>'
+                    + '</div>';
+            }).join('');
+        } catch(e) { container.innerHTML = '<div style="color:#c62828">加载失败: '+e.message+'</div>'; }
+    }
+
+    function activateIndex(key) {
+        // 发送加载索引请求
+        fetch('/api/index/load', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({filepath: 'data/index/default'})
+        }).then(function(r){return r.json()}).then(function(d){
+            if (d.status === 'success') {
+                var msg = document.getElementById('buildMsg');
+                msg.innerHTML = '<div class="status-msg success">✅ 索引 "'+key+'" 已激活，可用于检索搜索</div>';
+                checkStatus();
+            }
+        }).catch(function(){});
+        loadIndexList();
+    }
+
+    async function deleteIndexBtn(key) {
+        if (!confirm('确认删除此索引？')) return;
+        try {
+            var resp = await fetch('/api/index/delete', {method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({index_key:key})});
+            var data = await resp.json();
+            if (data.status === 'success') { loadIndexList(); }
+            else { alert('删除失败: '+data.message); }
+        } catch(e) { alert('请求失败: '+e.message); }
+    }
+
+    // ===== 构建索引（直接用当前载入数据集） =====
+    async function doBuildIndex() {
+        if (!dataLoaded) {
+            alert('请先在「数据导入」页面载入数据');
+            return;
+        }
+
+        const backend = currentBackend;
+        const algo = document.getElementById('buildAlgo').value;
+        const metric = document.getElementById('buildMetric').value;
+
+        const params = {};
+        if (backend === 'faiss') {
+            const nlistEl = document.getElementById('bpNlist');
+            const nprobeEl = document.getElementById('bpNprobe');
+            const nbitsEl = document.getElementById('bpNbits');
+            const mEl = document.getElementById('bpM');
+            if (nlistEl) params.nlist = parseInt(nlistEl.value) || 100;
+            if (nprobeEl) params.nprobe = parseInt(nprobeEl.value) || 10;
+            if (nbitsEl) params.nbits = parseInt(nbitsEl.value) || 8;
+            if (mEl) params.M = parseInt(mEl.value) || 32;
+        } else if (backend === 'sklearn') {
+            const leafEl = document.getElementById('bpLeaf');
+            const nEstEl = document.getElementById('bpNEst');
+            if (leafEl) params.leaf_size = parseInt(leafEl.value) || 40;
+            if (nEstEl) params.lsh_n_estimators = parseInt(nEstEl.value) || 10;
+        } else if (backend === 'hnswlib') {
+            const mEl = document.getElementById('bpM');
+            const efConstEl = document.getElementById('bpEfConst');
+            const efSearchEl = document.getElementById('bpEfSearch');
+            if (mEl) params.M = parseInt(mEl.value) || 16;
+            if (efConstEl) params.ef_construction = parseInt(efConstEl.value) || 200;
+            if (efSearchEl) params.ef_search = parseInt(efSearchEl.value) || 50;
+        }
+
+        const msg = document.getElementById('buildMsg');
+        const btn = document.getElementById('buildBtn');
+        btn.disabled = true; btn.textContent = '构建中...';
+        msg.innerHTML = '<div class="status-msg info">正在构建 ' + backend + ' / ' + algo + ' 索引，请稍候...</div>';
+
+        try {
+            // 获取当前数据集 key（从 datasets API 中找第一个已导入的）
+            let dsKey = null;
+            try {
+                const dsResp = await fetch('/api/datasets');
+                const dsData = await dsResp.json();
+                const imported = (dsData.datasets||[]).filter(function(d){return d.imported;});
+                if (imported.length > 0) dsKey = imported[0].key;
+            } catch(e) {}
+
+            if (!dsKey) {
+                msg.innerHTML = '<div class="status-msg error">未找到已载入的数据集，请先在「数据导入」页面载入</div>';
+                btn.disabled = false; btn.textContent = '🔨 构建索引';
+                return;
+            }
+
+            const resp = await fetch('/api/index/build', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    dataset_key: dsKey, backend: backend,
+                    index_type: algo, distance_metric: metric, params: params
+                })
+            });
+            const data = await resp.json();
+            if (data.status === 'success') {
+                const s = data.stats;
+                msg.innerHTML = '<div class="status-msg success">'
+                    + '✅ 索引构建成功！<br>'
+                    + '算法: ' + backend + '/' + (s.faiss_index_type||s.index_type||algo)
+                    + ' | 条目: ' + (s.ntotal||0).toLocaleString()
+                    + ' | 耗时: ' + (s.build_time_sec||0) + 's</div>';
+                checkStatus();
+                loadIndexList();
+                loadLoadedStatus();
+            } else {
+                msg.innerHTML = '<div class="status-msg error">构建失败: ' + data.message + '</div>';
+            }
+        } catch(e) {
+            msg.innerHTML = '<div class="status-msg error">请求失败: ' + e.message + '</div>';
+        } finally {
+            btn.disabled = false; btn.textContent = '🔨 构建索引';
+        }
+    }
+
+    // ===== 事件绑定 =====
+    document.getElementById('backendSelector').addEventListener('click', function(e) {
+        var option = e.target.closest('.backend-option');
+        if (option) {
+            var be = option.getAttribute('data-be');
+            if (be) selectBackend(be);
+        }
+    });
+
+    // 初始化
+    loadLoadedStatus();
+    loadIndexList();
+    refreshAlgoList();
+</script>
+{% endblock %}

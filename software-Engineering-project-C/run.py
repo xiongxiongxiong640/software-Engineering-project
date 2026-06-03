@@ -42,7 +42,7 @@ def create_app(config_overrides: dict = None) -> Flask:
     # ---- 基础配置 ----
     app.config.update({
         "SECRET_KEY": os.environ.get("SECRET_KEY", "single-cell-ann-secret-key"),
-        "MAX_CONTENT_LENGTH": 16 * 1024 * 1024,  # 16 MB
+        "MAX_CONTENT_LENGTH": None,  # 不限制（大文件用本地导入更靠谱）
         "JSON_AS_ASCII": False,                   # 支持中文 JSON
     })
 

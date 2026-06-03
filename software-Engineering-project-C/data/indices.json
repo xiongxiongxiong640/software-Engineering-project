@@ -1,0 +1,46 @@
+{
+  "Jyyu_liver_faiss_FAISS-IVFPQ_20260603160056": {
+    "index_key": "Jyyu_liver_faiss_FAISS-IVFPQ_20260603160056",
+    "backend": "faiss",
+    "index_type": "FAISS-IVFPQ",
+    "distance_metric": "euclidean",
+    "dataset_key": "Jyyu_liver_20260603154545",
+    "username": "Jyyu",
+    "stats": {
+      "status": "ready",
+      "backend": "faiss",
+      "distance_metric": "euclidean",
+      "index_path": null,
+      "ntotal": 69032,
+      "dimension": 30,
+      "faiss_index_type": "IVFPQ",
+      "nlist": 100,
+      "nprobe": 10,
+      "build_time_sec": 1.573,
+      "dataset_name": "liver"
+    },
+    "created_at": "2026-06-03T16:00:56.290756"
+  },
+  "Jyyu_liver_faiss_FAISS-IVFFlat_20260603161911": {
+    "index_key": "Jyyu_liver_faiss_FAISS-IVFFlat_20260603161911",
+    "backend": "faiss",
+    "index_type": "FAISS-IVFFlat",
+    "distance_metric": "cosine",
+    "dataset_key": "Jyyu_liver_20260603154545",
+    "username": "Jyyu",
+    "stats": {
+      "status": "ready",
+      "backend": "faiss",
+      "distance_metric": "cosine",
+      "index_path": null,
+      "ntotal": 69032,
+      "dimension": 30,
+      "faiss_index_type": "IVFFlat",
+      "nlist": 100,
+      "nprobe": 10,
+      "build_time_sec": 0.127,
+      "dataset_name": "liver"
+    },
+    "created_at": "2026-06-03T16:19:11.520869"
+  }
+}

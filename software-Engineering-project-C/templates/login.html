@@ -96,6 +96,9 @@
 
 {% block scripts %}
 <script>
+    // 已登录直接跳转
+    if (sessionStorage.getItem('ann_user')) { window.location.href = '/'; }
+
     function switchTab(tab) {
         if (tab === 'login') {
             document.getElementById('tabLogin').classList.add('active');

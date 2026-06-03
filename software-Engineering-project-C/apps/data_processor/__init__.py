@@ -362,7 +362,8 @@ def scan_local_files(data_dir: str = "data") -> list:
         size_mb = os.path.getsize(fpath) / (1024 * 1024)
         files.append({
             "filename": fname,
-            "path": os.path.join(data_dir, fname),
+            "path": (data_dir + "/" + fname).replace("\\", "/"),
+            "size_mb": round(size_mb, 2),
             "size_mb": round(size_mb, 2),
             "ext": ext[1:],
             "is_h5ad": ext == ".h5ad",
@@ -403,8 +404,9 @@ def import_local_file(
     import pandas as pd
 
     root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    filepath = filepath.replace("\\", "/")
     if not os.path.isabs(filepath):
-        filepath = os.path.join(root, filepath)
+        filepath = os.path.normpath(os.path.join(root, filepath))
 
     if not os.path.exists(filepath):
         return False, f"文件不存在: {filepath}", None
@@ -756,8 +758,3 @@ def handle_uploaded_file(
     _save_ds_db(db)
 
     return True, safe_name, stats
-
-
-# ---- 补充 import ----
-from datetime import datetime
-import json
