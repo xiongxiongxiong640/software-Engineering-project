@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 extraCssText: 'border-radius:8px;padding:10px 14px;line-height:1.7;',
             },
-            grid: { left: 50, right: 40, top: 30, bottom: 50 },
+            grid: { left: 60, right: 40, top: 30, bottom: 50 },
             xAxis: {
                 name: 'PC1', nameLocation: 'center', nameGap: 32,
                 nameTextStyle: { fontSize: 13, fontWeight: 600, color: '#64748b' },
