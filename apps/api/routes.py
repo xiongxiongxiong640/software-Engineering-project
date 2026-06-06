@@ -73,10 +73,10 @@ def search_cells():
         # 步骤 2: C 同学检索引擎
         # ============================================================
         try:
-            from apps.search_engine.core import search
+            from apps.search_engine import search
             distances, neighbor_row_indices = search(index, query_vector, top_k)
-            distances = distances[0]
-            neighbor_row_indices = neighbor_row_indices[0]
+            distances = distances[0] if distances.ndim > 1 else distances
+            neighbor_row_indices = neighbor_row_indices[0] if neighbor_row_indices.ndim > 1 else neighbor_row_indices
         except (ImportError, AttributeError):
             all_pca_matrices = adata.obsm["X_pca"]
             computed_dists = np.linalg.norm(all_pca_matrices - query_vector, axis=1)

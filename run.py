@@ -9,6 +9,9 @@ app_config = config_dict[get_config_mode]
 
 app = create_app(app_config)
 
+
+
 if __name__ == "__main__":
     # 允许局域网或容器内通过 5000 端口访问
     app.run(host='0.0.0.0', port=5000, debug=DEBUG)
+

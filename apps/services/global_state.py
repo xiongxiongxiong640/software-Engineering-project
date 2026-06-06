@@ -24,18 +24,28 @@ class AppState:
             print(f"[!] 提示: B同学的载入模块调用失败({e})，框架自动启动原生 Scanpy 兜底")
             self.adata = sc.read_h5ad(data_path)
         
-        # 🌟 修改点 2：对接 B 的 queries.py
+        # 🌟 修改点 2：对接 B 的 queries 和 C 的引擎
         print("[*] [AppState] 启动构建/加载高维空间 ANN 索引树 ...")
         try:
             from apps.data_processor.queries import get_all_vectors
-            from apps.search_engine.core import build_index
-            
+            from apps.search_engine.index_builder import build_index  # 确保引用路径是 C 的模块
+            from apps.search_engine import search as search_index
+
             vectors = get_all_vectors(self.adata)
-            self.search_index = build_index(vectors)
-            print("[+] C同学的检索索引树全量构建成功，常驻内存就绪！")
+            self.search_index = build_index(vectors)  # 将 C 的索引存入全局状态
+
+            # 额外验证：对第一条向量做一次简单检索，确保索引可查询
+            if vectors.shape[0] > 0:
+                query_vector = vectors[0]
+                distances, indices = search_index(self.search_index, query_vector, top_k=1)
+                if len(indices) == 0:
+                    raise RuntimeError("索引构建成功，但检索返回空结果")
+                print(f"[+] C 同学的检索索引树构建成功！验证通过：第一条样本最近邻索引={indices[0]}, 距离={float(distances[0]):.6f}")
+            else:
+                print("[!] 警告：向量矩阵为空，无法进行索引验证")
         except Exception as e:
-            print(f"[!] 提示: 索引层暂未接入或出现异常({e})。目前将启用降维矩阵暴力穷举形式兜底。")
-            self.search_index = None
+            print(f"[!] 索引构建失败: {e}，启用穷举兜底。")
+            self.search_index = None  # 保持 None，routes.py 会自动 fallback
         
         self.is_loaded = True
 
