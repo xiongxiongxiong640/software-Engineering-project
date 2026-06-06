@@ -37,10 +37,10 @@ class AppState:
             # 额外验证：对第一条向量做一次简单检索，确保索引可查询
             if vectors.shape[0] > 0:
                 query_vector = vectors[0]
-                distances, indices = search_index(self.search_index, query_vector, top_k=1)
+                distances, indices = search_index(self.search_index, query_vector, top_k=5)
                 if len(indices) == 0:
                     raise RuntimeError("索引构建成功，但检索返回空结果")
-                print(f"[+] C 同学的检索索引树构建成功！验证通过：第一条样本最近邻索引={indices[0]}, 距离={float(distances[0]):.6f}")
+                print(f"[+] C 同学的检索索引树构建成功！验证通过：第一条样本最近邻索引={indices[4]}, 距离={float(distances[4]):.6f}")
             else:
                 print("[!] 警告：向量矩阵为空，无法进行索引验证")
         except Exception as e:
