@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var legendContainer = document.getElementById('cell-type-legend');
     var chartDom        = document.getElementById('pca-chart');
 
+    ensureErrorToast();
+
     initChart();
     fetchCellData();
 
@@ -267,9 +269,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         renderChart(allCellsData, { queryId: data.query_cell.id, resultIds: resultIds });
 
-        selectedDisplay.classList.remove('hidden');
-        selectedCellId.textContent = data.query_cell.id;
-        selectedCellType.textContent = data.query_cell.cell_type || '—';
+        if (selectedDisplay) selectedDisplay.classList.remove('hidden');
+        if (selectedCellId) selectedCellId.textContent = data.query_cell.id;
+        if (selectedCellType) selectedCellType.textContent = data.query_cell.cell_type || '—';
 
         renderResults(data);
         resetChartBtn.classList.remove('hidden');
@@ -353,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showError(message) {
+        ensureErrorToast();
         errorMessage.textContent = message;
         errorToast.classList.remove('hidden');
         clearTimeout(errorToast._timeout);
@@ -360,9 +363,34 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     window.dismissError = function () {
+        if (!errorToast) return;
         errorToast.classList.add('hidden');
         clearTimeout(errorToast._timeout);
     };
+
+    function ensureErrorToast() {
+        if (!errorToast) {
+            errorToast = document.createElement('div');
+            errorToast.id = 'error-toast';
+            errorToast.className = 'toast toast-error hidden';
+            document.body.appendChild(errorToast);
+        }
+
+        if (!errorMessage) {
+            errorMessage = document.createElement('span');
+            errorMessage.id = 'error-message';
+            errorToast.appendChild(errorMessage);
+        }
+
+        if (!errorToast.querySelector('.toast-close')) {
+            var closeBtn = document.createElement('button');
+            closeBtn.className = 'toast-close';
+            closeBtn.type = 'button';
+            closeBtn.textContent = 'x';
+            closeBtn.addEventListener('click', window.dismissError);
+            errorToast.appendChild(closeBtn);
+        }
+    }
 
     function escapeHtml(str) {
         if (!str) return '';
