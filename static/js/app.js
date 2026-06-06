@@ -43,99 +43,64 @@ document.addEventListener('DOMContentLoaded', function () {
     var legendContainer = document.getElementById('cell-type-legend');
     var chartDom        = document.getElementById('pca-chart');
 
-    // 防御性编程：检查必需的元素
-    if (!chartDom || !errorMessage || !errorToast) {
-        console.error('[错误] HTML 缺少必需的元素，应用无法启动');
-        return;
-    }
-
     initChart();
     fetchCellData();
 
-    if (searchForm) {
-        searchForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            if (cellIdInput) {
-                performSearch(cellIdInput.value.trim());
-            }
+    searchForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        performSearch(cellIdInput.value.trim());
+    });
+
+    cellIdInput.addEventListener('input', function () {
+        var value = this.value.toLowerCase().trim();
+        suggestionsList.innerHTML = '';
+        if (!value) { suggestionsList.classList.add('hidden'); return; }
+
+        var matches = allCellIds.filter(function (id) {
+            return id.toLowerCase().indexOf(value) !== -1;
         });
-    }
+        if (matches.length === 0) { suggestionsList.classList.add('hidden'); return; }
 
-    if (cellIdInput) {
-        cellIdInput.addEventListener('input', function () {
-            if (!suggestionsList) return;
-            var value = this.value.toLowerCase().trim();
-            suggestionsList.innerHTML = '';
-            if (!value) { suggestionsList.classList.add('hidden'); return; }
-
-            var matches = allCellIds.filter(function (id) {
-                return id.toLowerCase().indexOf(value) !== -1;
-            });
-            if (matches.length === 0) { suggestionsList.classList.add('hidden'); return; }
-
-            matches.forEach(function (id) {
-                var li = document.createElement('li');
-                li.textContent = id;
-                li.addEventListener('click', function () {
-                    if (cellIdInput) cellIdInput.value = id;
-                    if (suggestionsList) suggestionsList.classList.add('hidden');
-                    performSearch(id);
-                });
-                suggestionsList.appendChild(li);
-            });
-            suggestionsList.classList.remove('hidden');
-        });
-
-        cellIdInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && suggestionsList) {
+        matches.forEach(function (id) {
+            var li = document.createElement('li');
+            li.textContent = id;
+            li.addEventListener('click', function () {
+                cellIdInput.value = id;
                 suggestionsList.classList.add('hidden');
-            }
+                performSearch(id);
+            });
+            suggestionsList.appendChild(li);
         });
-    }
+        suggestionsList.classList.remove('hidden');
+    });
 
     document.addEventListener('click', function (e) {
-        if (suggestionsList && e.target !== cellIdInput && e.target !== suggestionsList) {
+        if (e.target !== cellIdInput && e.target !== suggestionsList) {
             suggestionsList.classList.add('hidden');
         }
     });
+    cellIdInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') suggestionsList.classList.add('hidden');
+    });
 
-    if (resetChartBtn) {
-        resetChartBtn.addEventListener('click', resetView);
-    }
-    
+    resetChartBtn.addEventListener('click', resetView);
     window.addEventListener('resize', function () { if (chart) chart.resize(); });
 
     // ─── 获取细胞数据 ───────────────────────────────────────
     function fetchCellData() {
         fetch('/api/cells')
-            .then(function (r) { return r.ok ? r.json() : Promise.reject('Failed to fetch cells'); })
-            .then(function (ids) { 
-                if (Array.isArray(ids)) allCellIds = ids;
-            })
-            .catch(function (err) { 
-                console.warn('获取细胞 ID 失败，使用 Mock 数据:', err);
-                allCellIds = Object.keys(_MOCK_CELLS);
-            });
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (ids) { allCellIds = ids; })
+            .catch(function () {});
 
         fetch('/api/cells/pca')
-            .then(function (r) { return r.ok ? r.json() : Promise.reject('Failed to fetch PCA'); })
+            .then(function (r) { return r.ok ? r.json() : []; })
             .then(function (cells) {
-                if (Array.isArray(cells) && cells.length > 0) {
-                    allCellsData = cells;
-                    renderChart(cells);
-                    buildLegend(cells);
-                } else {
-                    throw new Error('无效的 PCA 数据');
-                }
+                allCellsData = cells;
+                renderChart(cells);
+                buildLegend(cells);
             })
-            .catch(function (err) {
-                console.warn('获取 PCA 数据失败，使用 Mock 数据:', err);
-                allCellsData = Object.values(_MOCK_CELLS).map(function (info, idx) {
-                    return {id: 'cell_' + String(idx + 1).padStart(3, '0'), ...info};
-                });
-                renderChart(allCellsData);
-                buildLegend(allCellsData);
-            });
+            .catch(function (err) { console.error('获取 PCA 数据失败:', err); });
     }
 
     // ─── 初始化 ECharts ─────────────────────────────────────
@@ -234,8 +199,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         chart.off('click');
         chart.on('click', function (params) {
-            if (params && params.data && params.data.cellId) {
-                if (cellIdInput) cellIdInput.value = params.data.cellId;
+            if (params.data && params.data.cellId) {
+                cellIdInput.value = params.data.cellId;
                 performSearch(params.data.cellId);
             }
         });
@@ -243,7 +208,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── 构建细胞类型图例 ────────────────────────────────────
     function buildLegend(cells) {
-        if (!legendContainer || !cells || cells.length === 0) return;
         var typeCount = {};
         cells.forEach(function (c) {
             typeCount[c.cell_type] = (typeCount[c.cell_type] || 0) + 1;
@@ -264,15 +228,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // ─── 执行搜索 ───────────────────────────────────────────
     function performSearch(queryCellId) {
         if (!queryCellId) { showError('请输入细胞 ID 或点击图中细胞。'); return; }
-        if (!topKInput) { showError('表单不完整，无法执行搜索。'); return; }
-        
         var topK = parseInt(topKInput.value, 10);
         if (isNaN(topK) || topK < 1) { showError('top_k 必须是正整数。'); return; }
 
         if (abortController) abortController.abort();
         abortController = new AbortController();
         setLoading(true);
-        if (cellIdInput) cellIdInput.value = queryCellId;
+        cellIdInput.value = queryCellId;
 
         fetch('/api/search', {
             method: 'POST',
@@ -280,19 +242,11 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({ query_cell_id: queryCellId, top_k: topK }),
             signal: abortController.signal,
         })
-        .then(function (r) { 
-            return r.json().then(function (data) { 
-                return {ok: r.ok, status: r.status, data: data}; 
-            }).catch(function () {
-                return {ok: r.ok, status: r.status, data: {status: 'error', message: '响应格式错误'}};
-            });
-        })
+        .then(function (r) { return r.json().then(function (data) { return {ok: r.ok, data: data}; }); })
         .then(function (result) {
-            if (!result.ok || !result.data || result.data.status === 'error') {
-                var errMsg = (result.data && result.data.message) || ('请求失败 (HTTP ' + result.status + ')');
-                showError(errMsg);
-                setLoading(false); 
-                return;
+            if (!result.ok || result.data.status === 'error') {
+                showError(result.data.message || '搜索失败。');
+                setLoading(false); return;
             }
             currentSearchResult = result.data;
             currentQueryCellId = queryCellId;
@@ -308,116 +262,97 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── 搜索成功回调 ───────────────────────────────────────
     function onSearchSuccess(data) {
-        if (!data || !data.query_cell || !allCellsData) return;
-        
         var resultIds = {};
-        if (data.results && data.results.length > 0) {
-            data.results.forEach(function (r) { resultIds[r.id] = true; });
-        }
+        data.results.forEach(function (r) { resultIds[r.id] = true; });
 
         renderChart(allCellsData, { queryId: data.query_cell.id, resultIds: resultIds });
 
-        if (selectedDisplay) selectedDisplay.classList.remove('hidden');
-        if (selectedCellId) selectedCellId.textContent = data.query_cell.id;
-        if (selectedCellType) selectedCellType.textContent = data.query_cell.cell_type || '—';
+        selectedDisplay.classList.remove('hidden');
+        selectedCellId.textContent = data.query_cell.id;
+        selectedCellType.textContent = data.query_cell.cell_type || '—';
 
         renderResults(data);
-        if (resetChartBtn) resetChartBtn.classList.remove('hidden');
+        resetChartBtn.classList.remove('hidden');
     }
 
     // ─── 渲染结果详情 ───────────────────────────────────────
     function renderResults(data) {
-        if (!data || !resultsSection || !emptyState) return;
-        
         emptyState.classList.add('hidden');
         resultsSection.classList.remove('hidden');
 
-        if (searchStatus) {
-            searchStatus.className = 'search-status success';
-            searchStatus.innerHTML =
-                '✅ 搜索完成 · 耗时 <strong>' + data.time_cost_ms + ' ms</strong> · ' +
-                '返回 <strong>' + (data.results ? data.results.length : 0) + '</strong> 条相似细胞';
-        }
+        searchStatus.className = 'search-status success';
+        searchStatus.innerHTML =
+            '✅ 搜索完成 · 耗时 <strong>' + data.time_cost_ms + ' ms</strong> · ' +
+            '返回 <strong>' + data.results.length + '</strong> 条相似细胞';
 
         var qc = data.query_cell;
-        if (queryCellInfo && qc) {
-            var pcaHtml = '';
-            if (qc.pca && qc.pca.length > 0) {
-                pcaHtml = qc.pca.map(function (v) {
-                    return '<span class="pca-badge">' + v.toFixed(4) + '</span>';
-                }).join(' ');
-            }
-
-            queryCellInfo.innerHTML =
-                '<div class="info-item"><span class="info-label">细胞 ID</span>' +
-                '<span class="info-value">' + escapeHtml(qc.id) + '</span></div>' +
-                '<div class="info-item"><span class="info-label">细胞类型</span>' +
-                '<span class="info-value">' + escapeHtml(qc.cell_type || '—') + '</span></div>' +
-                '<div class="info-item" style="grid-column: 1 / -1;">' +
-                '<span class="info-label">PCA 坐标</span>' +
-                '<span class="info-value">' + (pcaHtml || '—') + '</span></div>';
+        var pcaHtml = '';
+        if (qc.pca && qc.pca.length > 0) {
+            pcaHtml = qc.pca.map(function (v) {
+                return '<span class="pca-badge">' + v.toFixed(4) + '</span>';
+            }).join(' ');
         }
 
-        if (resultsTbody) {
-            resultsTbody.innerHTML = '';
-            if (!data.results || data.results.length === 0) {
-                resultsTbody.innerHTML =
-                    '<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8;">未找到相似细胞</td></tr>';
-            } else {
-                data.results.forEach(function (cell, index) {
-                    var row = document.createElement('tr');
-                    row.innerHTML =
-                        '<td class="rank-col">' + (index + 1) + '</td>' +
-                        '<td><strong>' + escapeHtml(cell.id) + '</strong></td>' +
-                        '<td class="distance-col">' + cell.distance.toFixed(4) + '</td>' +
-                        '<td>' + escapeHtml(cell.cell_type || '—') + '</td>' +
-                        '<td>' + escapeHtml(cell.disease || '—') + '</td>';
-                    row.style.cursor = 'pointer';
-                    row.addEventListener('click', function () {
-                        if (cellIdInput) {
-                            cellIdInput.value = cell.id;
-                            performSearch(cell.id);
-                        }
-                    });
-                    resultsTbody.appendChild(row);
+        queryCellInfo.innerHTML =
+            '<div class="info-item"><span class="info-label">细胞 ID</span>' +
+            '<span class="info-value">' + escapeHtml(qc.id) + '</span></div>' +
+            '<div class="info-item"><span class="info-label">细胞类型</span>' +
+            '<span class="info-value">' + escapeHtml(qc.cell_type || '—') + '</span></div>' +
+            '<div class="info-item" style="grid-column: 1 / -1;">' +
+            '<span class="info-label">PCA 坐标</span>' +
+            '<span class="info-value">' + (pcaHtml || '—') + '</span></div>';
+
+        resultsTbody.innerHTML = '';
+        if (data.results.length === 0) {
+            resultsTbody.innerHTML =
+                '<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8;">未找到相似细胞</td></tr>';
+        } else {
+            data.results.forEach(function (cell, index) {
+                var row = document.createElement('tr');
+                row.innerHTML =
+                    '<td class="rank-col">' + (index + 1) + '</td>' +
+                    '<td><strong>' + escapeHtml(cell.id) + '</strong></td>' +
+                    '<td class="distance-col">' + cell.distance.toFixed(4) + '</td>' +
+                    '<td>' + escapeHtml(cell.cell_type || '—') + '</td>' +
+                    '<td>' + escapeHtml(cell.disease || '—') + '</td>';
+                row.style.cursor = 'pointer';
+                row.addEventListener('click', function () {
+                    cellIdInput.value = cell.id;
+                    performSearch(cell.id);
                 });
-            }
+                resultsTbody.appendChild(row);
+            });
         }
-        
-        if (resultsSection && resultsSection.scrollIntoView) {
-            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ─── 重置视图 ───────────────────────────────────────────
     function resetView() {
         currentSearchResult = null;
         currentQueryCellId = null;
-        if (cellIdInput) cellIdInput.value = '';
-        if (selectedDisplay) selectedDisplay.classList.add('hidden');
-        if (resultsSection) resultsSection.classList.add('hidden');
-        if (emptyState) emptyState.classList.remove('hidden');
-        if (resetChartBtn) resetChartBtn.classList.add('hidden');
+        cellIdInput.value = '';
+        selectedDisplay.classList.add('hidden');
+        resultsSection.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        resetChartBtn.classList.add('hidden');
         renderChart(allCellsData);
     }
 
     function setLoading(isLoading) {
-        if (!searchBtn) return;
         var btnText = searchBtn.querySelector('.btn-text');
         var btnLoading = searchBtn.querySelector('.btn-loading');
         if (isLoading) {
             searchBtn.disabled = true;
-            if (btnText) btnText.classList.add('hidden');
-            if (btnLoading) btnLoading.classList.remove('hidden');
+            btnText.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
         } else {
             searchBtn.disabled = false;
-            if (btnText) btnText.classList.remove('hidden');
-            if (btnLoading) btnLoading.classList.add('hidden');
+            btnText.classList.remove('hidden');
+            btnLoading.classList.add('hidden');
         }
     }
 
     function showError(message) {
-        if (!errorMessage || !errorToast) return;
         errorMessage.textContent = message;
         errorToast.classList.remove('hidden');
         clearTimeout(errorToast._timeout);
@@ -425,7 +360,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     window.dismissError = function () {
-        if (!errorToast) return;
         errorToast.classList.add('hidden');
         clearTimeout(errorToast._timeout);
     };
