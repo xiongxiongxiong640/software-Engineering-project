@@ -42,7 +42,12 @@ def create_app(config):
     # 核心管理：服务器启动时自动单例初始化大文件，常驻内存
     data_path = os.path.join(os.getcwd(), 'data', 'liver.h5ad')
     if os.path.exists(data_path):
-        global_app_state.init_app(data_path=data_path)
+        # Flask debug 模式下会启动 reloader 父进程与子进程。
+        # 仅在实际工作子进程（WERKZEUG_RUN_MAIN='true'）或非调试模式下执行耗时初始化。
+        if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+            global_app_state.init_app(data_path=data_path)
+        else:
+            print('[*] 跳过父进程初始化（reloader 父进程）')
     else:
         print(f"[!] 警告: 未在指定路径找到核心单细胞文件: {data_path}，请检查 data 目录！")
         
