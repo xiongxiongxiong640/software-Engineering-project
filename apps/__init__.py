@@ -3,6 +3,7 @@ from flask import Flask
 from flask_cors import CORS
 from apps.services.global_state import global_app_state
 
+
 def register_blueprints(app):
     # 1. 注册 A 同学编写的核心 RESTful API 蓝图
     from apps.api import blueprint as api_blueprint
@@ -17,13 +18,19 @@ def register_blueprints(app):
     
     # 3. 注册前端 D 同学页面蓝图 (防错捕获)
     try:
-        from apps.home import blueprint as home_blueprint
-        app.register_blueprint(home_blueprint)
+        from apps.home import home_bp
+        app.register_blueprint(home_bp)
     except ImportError:
         print("[!] 提示: 前端 home 页面路由蓝图暂未检测到接入")
 
+
 def create_app(config):
-    app = Flask(__name__)
+    # 使用绝对路径定位模板和静态文件（更稳定，不依赖当前工作目录）
+    base_dir = os.path.dirname(os.path.dirname(__file__))  # software-Engineering-project 目录
+    template_dir = os.path.join(base_dir, 'templates')
+    static_dir = os.path.join(base_dir, 'static')
+    
+    app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     app.config.from_object(config)
     
     # 启用跨域资源共享 (CORS)
