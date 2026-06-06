@@ -4,11 +4,18 @@ from flask_cors import CORS
 from apps.services.global_state import global_app_state
 
 def register_blueprints(app):
-    # 注册你编写的核心 RESTful API 蓝图
+    # 1. 注册 A 同学编写的核心 RESTful API 蓝图
     from apps.api import blueprint as api_blueprint
     app.register_blueprint(api_blueprint, url_prefix='/api')
     
-    # 注册前端 D 同学页面蓝图 (做防错捕获，若D还没写，系统不崩溃)
+    # 2. 兼容并注册 B 同学的数据测试蓝图 (如果存在)
+    try:
+        from apps.api.data_routes import data_bp
+        app.register_blueprint(data_bp, url_prefix='/api/data')
+    except ImportError:
+        pass
+    
+    # 3. 注册前端 D 同学页面蓝图 (防错捕获)
     try:
         from apps.home import blueprint as home_blueprint
         app.register_blueprint(home_blueprint)
@@ -19,7 +26,7 @@ def create_app(config):
     app = Flask(__name__)
     app.config.from_object(config)
     
-    # 启用跨域资源共享 (CORS)，方便 D 同学进行前后端分离开发调试
+    # 启用跨域资源共享 (CORS)
     CORS(app)
     
     # 注册所有模块蓝图
