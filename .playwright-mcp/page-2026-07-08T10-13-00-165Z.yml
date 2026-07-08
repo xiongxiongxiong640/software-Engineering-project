@@ -1,0 +1,52 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - heading "🔬 细胞相似性搜索系统" [level=1] [ref=e5]
+        - paragraph [ref=e6]: Single-Cell Similarity Search — 基于 PCA 向量的细胞检索
+      - navigation [ref=e7]:
+        - generic [ref=e8]:
+          - button "🔑 登录" [ref=e9] [cursor=pointer]
+          - button "📝 注册" [ref=e10] [cursor=pointer]
+  - main [ref=e11]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - heading "📊 PCA 细胞分布图" [level=2] [ref=e15]
+        - generic [ref=e16]: 点击图中任意细胞即可查询其相似细胞 · 滚轮缩放 · 拖拽平移
+      - generic [ref=e19]:
+        - text: 查询细胞
+        - text: 相似结果
+        - text: 其他细胞
+    - generic [ref=e23]:
+      - complementary [ref=e24]:
+        - generic [ref=e25]:
+          - heading "🔍 搜索相似细胞" [level=3] [ref=e26]
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e29]: 细胞 ID
+              - textbox "细胞 ID" [ref=e31]:
+                - /placeholder: 输入 ID 或点击图中细胞
+            - generic [ref=e32]:
+              - generic [ref=e33]: 细胞类型筛选（可选）
+              - combobox "细胞类型筛选（可选）" [ref=e34] [cursor=pointer]:
+                - option "全部类型" [selected]
+            - generic [ref=e35]:
+              - generic [ref=e36]: 返回结果数 (top_k)
+              - spinbutton "返回结果数 (top_k)" [ref=e37]: "10"
+            - button "🔍 搜索" [ref=e38] [cursor=pointer]
+        - heading "🧬 向量搜索 ▸" [level=3] [ref=e40] [cursor=pointer]:
+          - text: 🧬 向量搜索
+          - generic [ref=e41]: ▸
+        - heading "🗂️ 细胞类型" [level=4] [ref=e43]
+        - heading "⚙️ 高级选项 ▸" [level=4] [ref=e45] [cursor=pointer]:
+          - text: ⚙️ 高级选项
+          - generic [ref=e46]: ▸
+      - generic [ref=e47]:
+        - generic [ref=e48]: 🔬
+        - heading "开始探索细胞数据" [level=3] [ref=e49]
+        - paragraph [ref=e50]:
+          - text: 在左侧输入细胞 ID 并点击搜索，或直接在 PCA 散点图中
+          - strong [ref=e51]: 点击任意细胞
+          - text: 即可查询其相似细胞
+  - contentinfo [ref=e52]:
+    - paragraph [ref=e54]: 软件工程团队作业 © 2025
