@@ -1,0 +1,8 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "$2b$12$lgJUh9T0UDMvHM3Zm0BDs.Y9px5c26FjfRpUNuJ5AbsZ.E.wOAsmy",
+    "role": "admin",
+    "created_at": "2026-07-08T18:08:31.688784"
+  }
+}

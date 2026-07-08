@@ -27,6 +27,7 @@ def search_cells():
     data = request.json or {}
     query_cell_id = data.get('query_cell_id')
     top_k = int(data.get('top_k', 10))
+    filter_cell_type = data.get('filter_cell_type')
     
     if not query_cell_id:
         return jsonify({"status": "error", "message": "输入校验失败：缺少参数 'query_cell_id'"}), 400
@@ -74,13 +75,18 @@ def search_cells():
         # ============================================================
         try:
             from apps.search_engine import search
-            distances, neighbor_row_indices = search(index, query_vector, top_k)
+            n_total = int(adata.n_obs)
+            multiplier = 10 if filter_cell_type else 2
+            fetch_k = min(n_total, max(top_k + 1, top_k * multiplier))
+            distances, neighbor_row_indices = search(index, query_vector, fetch_k)
             distances = distances[0] if distances.ndim > 1 else distances
             neighbor_row_indices = neighbor_row_indices[0] if neighbor_row_indices.ndim > 1 else neighbor_row_indices
         except (ImportError, AttributeError):
             all_pca_matrices = adata.obsm["X_pca"]
             computed_dists = np.linalg.norm(all_pca_matrices - query_vector, axis=1)
-            neighbor_row_indices = np.argsort(computed_dists)[:top_k + 1]
+            multiplier = 10 if filter_cell_type else 2
+            fetch_k = min(adata.n_obs, max(top_k + 1, top_k * multiplier))
+            neighbor_row_indices = np.argsort(computed_dists)[:fetch_k]
             distances = computed_dists[neighbor_row_indices]
 
         # ============================================================
@@ -110,10 +116,14 @@ def search_cells():
         final_results = []
         for idx, dist in enumerate(distances):
             item = results_list[idx]
-            if item["id"] == query_cell_id and idx == 0:
+            if item["id"] == query_cell_id:
+                continue
+            if filter_cell_type and item.get("cell_type") != filter_cell_type:
                 continue
             item["distance"] = float(dist)
             final_results.append(item)
+            if len(final_results) >= top_k:
+                break
 
         return jsonify({
             "status": "success",

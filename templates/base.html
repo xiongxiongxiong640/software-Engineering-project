@@ -9,9 +9,24 @@
 </head>
 <body>
     <header class="app-header">
-        <div class="container">
-            <h1 class="app-title">🔬 细胞相似性搜索系统</h1>
-            <p class="app-subtitle">Single-Cell Similarity Search — 基于 PCA 向量的细胞检索</p>
+        <div class="container nav-container">
+            <div class="nav-brand">
+                <h1 class="app-title">🔬 细胞相似性搜索系统</h1>
+                <p class="app-subtitle">Single-Cell Similarity Search — 基于 PCA 向量的细胞检索</p>
+            </div>
+            <nav class="nav-auth" id="nav-auth">
+                <!-- 未登录状态 -->
+                <div id="auth-guest" class="auth-buttons">
+                    <button class="btn btn-outline-light btn-sm" onclick="AuthUI.showLoginModal()">🔑 登录</button>
+                    <button class="btn btn-light btn-sm" onclick="AuthUI.showRegisterModal()">📝 注册</button>
+                </div>
+                <!-- 已登录状态 -->
+                <div id="auth-user" class="auth-user-menu hidden">
+                    <span class="user-greeting">👤 <span id="auth-username"></span></span>
+                    <span class="user-role-badge" id="auth-role-badge"></span>
+                    <button class="btn btn-outline-light btn-sm" onclick="AuthUI.logout()">退出</button>
+                </div>
+            </nav>
         </div>
     </header>
 
@@ -25,6 +40,70 @@
         </div>
     </footer>
 
+    <!-- ========== 登录模态框 ========== -->
+    <div id="login-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>🔑 用户登录</h3>
+                <button class="modal-close" onclick="AuthUI.closeModals()">✕</button>
+            </div>
+            <form id="login-form" class="modal-form" onsubmit="return false;">
+                <div class="form-group full-width">
+                    <label for="login-username">用户名</label>
+                    <input type="text" id="login-username" placeholder="请输入用户名" required minlength="3">
+                </div>
+                <div class="form-group full-width">
+                    <label for="login-password">密码</label>
+                    <input type="password" id="login-password" placeholder="请输入密码" required minlength="6">
+                </div>
+                <div id="login-error" class="form-error hidden"></div>
+                <button type="submit" id="login-submit-btn" class="btn btn-primary btn-full">
+                    <span class="btn-text">登录</span>
+                    <span class="btn-loading hidden">⏳ 登录中...</span>
+                </button>
+            </form>
+            <p class="modal-footer-text">
+                还没有账号？<a href="#" onclick="AuthUI.showRegisterModal()">立即注册</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- ========== 注册模态框 ========== -->
+    <div id="register-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📝 用户注册</h3>
+                <button class="modal-close" onclick="AuthUI.closeModals()">✕</button>
+            </div>
+            <form id="register-form" class="modal-form" onsubmit="return false;">
+                <div class="form-group full-width">
+                    <label for="register-username">用户名</label>
+                    <input type="text" id="register-username" placeholder="至少 3 个字符" required minlength="3">
+                </div>
+                <div class="form-group full-width">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" placeholder="至少 6 个字符" required minlength="6">
+                </div>
+                <div class="form-group full-width">
+                    <label for="register-password-confirm">确认密码</label>
+                    <input type="password" id="register-password-confirm" placeholder="再次输入密码" required minlength="6">
+                </div>
+                <div id="register-error" class="form-error hidden"></div>
+                <button type="submit" id="register-submit-btn" class="btn btn-primary btn-full">
+                    <span class="btn-text">注册</span>
+                    <span class="btn-loading hidden">⏳ 注册中...</span>
+                </button>
+            </form>
+            <p class="modal-footer-text">
+                已有账号？<a href="#" onclick="AuthUI.showLoginModal()">立即登录</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- ========== Toast 容器 ========== -->
+    <div id="toast-container" class="toast-container"></div>
+
     {% block scripts %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
 </html>
