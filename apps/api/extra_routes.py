@@ -1,10 +1,36 @@
 import time
+from functools import wraps
 
 import numpy as np
 from flask import jsonify, request
 
 from apps.api import blueprint
 from apps.services.global_state import global_app_state
+
+
+def _admin_required(f):
+    """管理员权限鉴权装饰器。
+
+    要求请求头携带 ``Authorization: Bearer <username>``，
+    并校验该用户是否存在且角色为 admin。
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"status": "error", "message": "需要管理员权限，请先登录"}), 401
+        username = auth_header[7:].strip()
+        if not username:
+            return jsonify({"status": "error", "message": "需要管理员权限，请先登录"}), 401
+
+        from apps.auth import _load_users
+        users = _load_users()
+        user = users.get(username)
+        if not user or user.get("role") != "admin":
+            return jsonify({"status": "error", "message": "需要管理员权限"}), 403
+
+        return f(*args, **kwargs)
+    return decorated
 
 
 def _require_loaded():
@@ -76,6 +102,7 @@ def auth_current_user():
 
 
 @blueprint.route("/auth/users", methods=["GET"])
+@_admin_required
 def auth_users():
     from apps.auth import get_all_users, init_admin
     init_admin()
@@ -84,6 +111,7 @@ def auth_users():
 
 
 @blueprint.route("/auth/users/<username>/role", methods=["PUT"])
+@_admin_required
 def auth_update_role(username):
     from apps.auth import init_admin, update_user_role
     init_admin()
@@ -103,6 +131,7 @@ def index_status():
 
 
 @blueprint.route("/index/rebuild", methods=["POST"])
+@_admin_required
 def index_rebuild():
     ok, response, status = _require_loaded()
     if not ok:

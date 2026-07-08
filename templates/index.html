@@ -54,6 +54,12 @@
                     </div>
                 </div>
                 <div class="form-group full-width">
+                    <label for="filter-cell-type">细胞类型筛选（可选）</label>
+                    <select id="filter-cell-type" class="form-select">
+                        <option value="">全部类型</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
                     <label for="top-k">返回结果数 (top_k)</label>
                     <input
                         type="number"
@@ -72,10 +78,52 @@
             </form>
         </div>
 
+        <!-- 向量搜索面板 -->
+        <div class="search-card">
+            <h3 class="collapsible-header" id="vector-search-toggle">
+                🧬 向量搜索 <span class="collapse-arrow">▸</span>
+            </h3>
+            <div id="vector-search-panel" class="collapsible-panel hidden">
+                <form id="vector-search-form" class="search-form">
+                    <div class="form-group full-width">
+                        <label for="vector-input">输入 {{ 30 }} 维 PCA 向量（逗号分隔）</label>
+                        <textarea
+                            id="vector-input"
+                            rows="2"
+                            placeholder="例如: 1.23, -0.45, 0.82, ...（30 个数值）"
+                        ></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="vector-top-k">返回结果数</label>
+                        <input type="number" id="vector-top-k" value="10" min="1" max="50">
+                    </div>
+                    <button type="submit" id="vector-search-btn" class="btn btn-secondary btn-full">
+                        <span class="btn-text">🧬 向量搜索</span>
+                        <span class="btn-loading hidden">⏳ 搜索中...</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <!-- 图例 -->
         <div class="legend-card">
             <h4>🗂️ 细胞类型</h4>
             <div id="cell-type-legend" class="cell-type-legend"></div>
+        </div>
+
+        <!-- 高级选项面板 -->
+        <div class="legend-card">
+            <h4 class="collapsible-header" id="advanced-toggle">
+                ⚙️ 高级选项 <span class="collapse-arrow">▸</span>
+            </h4>
+            <div id="advanced-panel" class="collapsible-panel hidden">
+                <div class="advanced-actions">
+                    <button id="index-status-btn" class="btn btn-secondary btn-full btn-sm">📊 查看索引状态</button>
+                    <button id="benchmark-btn" class="btn btn-secondary btn-full btn-sm">⏱️ 性能评估</button>
+                    <button id="index-rebuild-btn" class="btn btn-secondary btn-full btn-sm">🔄 重建索引</button>
+                </div>
+                <div id="advanced-result" class="advanced-result hidden"></div>
+            </div>
         </div>
     </aside>
 
@@ -127,5 +175,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=3"></script>
 {% endblock %}
