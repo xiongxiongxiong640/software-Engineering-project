@@ -517,9 +517,30 @@ document.addEventListener('DOMContentLoaded', function () {
     // ─── 重建索引 ──────────────────────────────────────────
     function fetchIndexRebuild() {
         showAdvancedLoading('正在重建索引，请稍候...');
-        fetch('/api/index/rebuild', { method: 'POST' })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
+        var headers = {};
+        if (typeof AuthState !== 'undefined' && AuthState.getAuthHeaders) {
+            headers = AuthState.getAuthHeaders();
+        }
+
+        fetch('/api/index/rebuild', {
+            method: 'POST',
+            headers: headers,
+        })
+            .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); })
+            .then(function (result) {
+                var data = result.data;
+                if (!result.ok) {
+                    if (result.status === 401) {
+                        showAdvancedResult('<p class="text-error">' + escapeHtml(data.message || '需要管理员权限，请先登录') + '</p>');
+                        return;
+                    }
+                    if (result.status === 403) {
+                        showAdvancedResult('<p class="text-error">' + escapeHtml(data.message || '当前账号不是管理员') + '</p>');
+                        return;
+                    }
+                    showAdvancedResult('<p class="text-error">' + escapeHtml(data.message || '重建失败') + '</p>');
+                    return;
+                }
                 if (data.status === 'success') {
                     var html = '<div class="advanced-info">';
                     html += '<p><span class="badge badge-success">✅ 索引重建成功</span></p>';

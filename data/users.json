@@ -4,5 +4,11 @@
     "password": "$2b$12$lgJUh9T0UDMvHM3Zm0BDs.Y9px5c26FjfRpUNuJ5AbsZ.E.wOAsmy",
     "role": "admin",
     "created_at": "2026-07-08T18:08:31.688784"
+  },
+  "123": {
+    "username": "123",
+    "password": "scrypt:32768:8:1$DSznRep4kgsjXG9J$c3951ba2b67c15bc20af89ed60aa1abbcc7a4257303e32393b01131713b6ab7a789d630023500d66d104fd76c04cc8a08dae3833e5ab76a5995a21b3265ea297",
+    "role": "user",
+    "created_at": "2026-07-08T20:08:54.521148"
   }
 }
