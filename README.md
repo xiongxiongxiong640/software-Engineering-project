@@ -44,7 +44,7 @@ software-Engineering-project/
 ### 3.1 克隆项目
 
 ```bash
-git clone <你的仓库地址>
+git clone https://github.com/xiongxiongxiong640/software-Engineering-project
 cd software-Engineering-project
 ```
 

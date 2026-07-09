@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var queryId = highlightData ? highlightData.queryId : null;
         var resultIds = highlightData ? highlightData.resultIds : {};
+        var hasHighlights = !!queryId || Object.keys(resultIds).length > 0;
 
         var seriesData = cells.map(function (cell) {
             var isQuery = (queryId === cell.id);
@@ -166,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 color = '#f97316'; size = 13; symbol = 'circle'; opacity = 0.9;
                 borderColor = '#ea580c'; borderWidth = 1.5; shadowBlur = 8;
                 shadowColor = 'rgba(249,115,22,0.5)';
-            } else if (queryId) {
+            } else if (hasHighlights) {
                 color = '#cbd5e1'; size = 6; symbol = 'circle'; opacity = 0.28;
                 borderColor = 'transparent'; borderWidth = 0; shadowBlur = 0;
                 shadowColor = 'transparent';
